@@ -35,15 +35,7 @@ class BaseDatasetJSONGenerator(ABC):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return [f for f in dir.glob(f'*{ext}') if contains is None or contains in f.name]
-
-    @staticmethod
-    def find_label_for_image(image: Path, labels: list[Path], label_suffix: str = '_seg'):
-        for label in labels:
-            if image.stem in label.stem:
-                return label
-        return None
-        
+        return sorted([f for f in dir.glob(f'*{ext}') if contains is None or contains in f.name])        
 
 
 class AbdomenCTJSONGenerator(BaseDatasetJSONGenerator):
@@ -62,9 +54,9 @@ class AbdomenCTJSONGenerator(BaseDatasetJSONGenerator):
                 [
                     {
                         "image": str(image),
-                        "seg": str(work_dir / 'labelsTr' / (image.name)),
+                        "seg": str(work_dir / 'labelsTr' / (image.name.replace("_0000.nii.gz", ".nii.gz"))),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name.replace("_0000.nii.gz", ".nii.gz"))).exists()
                 ]
             )
 
@@ -101,7 +93,7 @@ class AMOSJSONGenerator(BaseDatasetJSONGenerator):
                         "image": str(image),
                         "seg": str(work_dir / 'labelsVal' / (image.name)),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
                 ]
             )
 
@@ -109,7 +101,11 @@ class AMOSJSONGenerator(BaseDatasetJSONGenerator):
     
 class BratsJSONGenerator(BaseDatasetJSONGenerator):
     dir = BRATS2020_DIR
-    num_seg_classes = 4
+    seg_class_values = [
+        1, # necrotic and non-enhancing tumor core
+        2, # peritumoral edema
+        4, # GD-enhancing tumor
+    ]
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -124,8 +120,8 @@ class BratsJSONGenerator(BaseDatasetJSONGenerator):
                     {
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr' / (image.name)),
-                        "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
+                        "seg_index": x
+                    } for x in cls.seg_class_values if (work_dir / 'labelsTr' / (image.name)).exists()
                 ]
             )
 
@@ -133,7 +129,7 @@ class BratsJSONGenerator(BaseDatasetJSONGenerator):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return [Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name]
+        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
     
 
 class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
@@ -171,7 +167,7 @@ class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
         return dataset_json
     
 class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
-    dir = BRATS2020_DIR
+    dir = CT_STROKE_DIR
     num_seg_classes = 1
 
     @classmethod
@@ -188,7 +184,7 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr_CBF' / (image.name)),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes)
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr_CBF' / (image.name)).exists()
                 ]
             )
             dataset_json.extend(
@@ -197,7 +193,7 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr_Tmax' / (image.name)),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes)
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr_Tmax' / (image.name)).exists()
                 ]
             )
 
@@ -205,7 +201,7 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return [Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name]
+        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
 
 
 class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
@@ -258,7 +254,7 @@ class ISLESJSONGenerator(BaseDatasetJSONGenerator):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return [Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name]
+        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
     
 class KitsJSONGenerator(BaseDatasetJSONGenerator):
     dir = KITS23_DIR
@@ -601,7 +597,7 @@ class UpennJSONGenerator(BaseDatasetJSONGenerator):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return [Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name]
+        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
 
 
 class ProstateJSONGenerator(BaseDatasetJSONGenerator):
@@ -620,13 +616,11 @@ class ProstateJSONGenerator(BaseDatasetJSONGenerator):
                 [
                     {
                         "image": str(image),
-                        "seg": str(work_dir / 'labelsTr' / (image.name.replace(".nii.gz", "_segmentation.nii.gz"))),
+                        "seg": str(work_dir / 'labelsTr' / (image.name)),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name.replace(".nii.gz", "_segmentation.nii.gz"))).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
                 ]
             )
-
-        # TODO: use test data too?
 
         return dataset_json
 
@@ -762,7 +756,7 @@ class ONDRIJSONGenerator(BaseDatasetJSONGenerator):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return [Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name]
+        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
 
 
 class WORDJSONGenerator(BaseDatasetJSONGenerator):
@@ -826,10 +820,10 @@ if __name__ == "__main__":
         BratsJSONGenerator,
         CovidCTJSONGenerator,
         CTStrokeJSONGenerator,
-        HealthyTotalBodyJSONGenerator,
+        HealthyTotalBodyJSONGenerator, # need image locations
         ISLESJSONGenerator,
         KitsJSONGenerator,
-        KneeJSONGenerator,
+        KneeJSONGenerator, # need to choose seg
         LITSJSONGenerator,
         LUNAJSONGenerator,
         MMWHSJSONGenerator,
@@ -838,7 +832,7 @@ if __name__ == "__main__":
         UpennJSONGenerator,
         ProstateJSONGenerator,
         SegTHORJSONGenerator,
-        TCIAPancreasJSONGenerator,
+        TCIAPancreasJSONGenerator, # need image locations
         TotalSegmentatorJSONGenerator,
         ONDRIJSONGenerator,
         WORDJSONGenerator
