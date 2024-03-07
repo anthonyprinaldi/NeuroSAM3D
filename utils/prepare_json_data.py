@@ -84,18 +84,18 @@ class AMOSJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        imagesVal = cls.load_all_images(work_dir / 'imagesVal')
+        # imagesVal = cls.load_all_images(work_dir / 'imagesVal')
 
-        for image in imagesVal:
-            dataset_json.extend(
-                [
-                    {
-                        "image": str(image),
-                        "seg": str(work_dir / 'labelsVal' / (image.name)),
-                        "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
-                ]
-            )
+        # for image in imagesVal:
+        #     dataset_json.extend(
+        #         [
+        #             {
+        #                 "image": str(image),
+        #                 "seg": str(work_dir / 'labelsVal' / (image.name)),
+        #                 "seg_index": x + 1
+        #             } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
+        #         ]
+        #     )
 
         return dataset_json
     
@@ -206,14 +206,15 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
 
 class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
     dir = HEALTHY_TOTAL_BODY_DIR
-    num_seg_classes = 119 # or 36? TODO --> check seg image
+    num_seg_classes = 36
+    # TODO: double check the images and seg masks line up
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
         dataset_json = []
         work_dir = cls.dir if alternate_dir is None else alternate_dir
 
-        imagesTr = cls.load_all_images(work_dir / 'imagesTr') # TODO: where did tony store?
+        imagesTr = cls.load_all_images(work_dir / 'imagesTr')
 
         for image in imagesTr:
             dataset_json.extend(
@@ -227,6 +228,11 @@ class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         return dataset_json
+    
+    @staticmethod
+    def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
+        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
+
     
 class ISLESJSONGenerator(BaseDatasetJSONGenerator):
     dir = ISLES_2022_DIR
@@ -430,110 +436,6 @@ class MSDJSONGenerator(BaseDatasetJSONGenerator):
                         } for x in range(num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
                     ]
                 )
-        
-        # work_dir = base_work_dir / 'Task03_Liver'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(2) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
-
-        # work_dir = base_work_dir / 'Task04_Hippocampus'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(2) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
-        
-        # work_dir = base_work_dir / 'Task05_Prostate'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(2) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
-
-        # work_dir = base_work_dir / 'Task06_Lung'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(1) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
-
-        # work_dir = base_work_dir / 'Task07_Pancreas'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(2) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
-
-        # work_dir = base_work_dir / 'Task08_HepaticVessel'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(2) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
-
-        # work_dir = base_work_dir / 'Task09_Spleen'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(1) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
-
-        # work_dir = base_work_dir / 'Task10_Colon'
-        # imagesTr = cls.load_all_images(work_dir / 'imagesTr')
-        # for image in imagesTr:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsTr' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(1) if (work_dir / 'labelsTr' / (image.name)).exists()
-        #         ]
-        #     )
 
         return dataset_json
 
@@ -665,9 +567,9 @@ class TCIAPancreasJSONGenerator(BaseDatasetJSONGenerator):
                 [
                     {
                         "image": str(image),
-                        "seg": str(work_dir / 'labelsTr' / (image.name)), # TODO: compare to where tony saved data
+                        "seg": str(work_dir / 'labelsTr' / (image.name.replace("image", "label"))),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name.replace("image", "label"))).exists()
                 ]
             )
 
@@ -730,27 +632,27 @@ class ONDRIJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        imagesVal = cls.load_all_images(work_dir / 'imagesVal')
-        for image in imagesVal:
-            if "masked" not in str(image):
-                dataset_json.extend(
-                    [
-                        {
-                            "image": str(image),
-                            "seg": str(work_dir / 'labelsVal_brain' / (image.name)),
-                            "seg_index": x + 1
-                        } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_brain' / (image.name)).exists()
-                    ]
-                )
-            dataset_json.extend(
-                [
-                    {
-                        "image": str(image),
-                        "seg": str(work_dir / 'labelsVal_wmh' / (image.name)),
-                        "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_wmh' / (image.name)).exists()
-                ]
-            )
+        # imagesVal = cls.load_all_images(work_dir / 'imagesVal')
+        # for image in imagesVal:
+        #     if "masked" not in str(image):
+        #         dataset_json.extend(
+        #             [
+        #                 {
+        #                     "image": str(image),
+        #                     "seg": str(work_dir / 'labelsVal_brain' / (image.name)),
+        #                     "seg_index": x + 1
+        #                 } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_brain' / (image.name)).exists()
+        #             ]
+        #         )
+        #     dataset_json.extend(
+        #         [
+        #             {
+        #                 "image": str(image),
+        #                 "seg": str(work_dir / 'labelsVal_wmh' / (image.name)),
+        #                 "seg_index": x + 1
+        #             } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_wmh' / (image.name)).exists()
+        #         ]
+        #     )
 
         return dataset_json
 
@@ -780,17 +682,17 @@ class WORDJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        imagesVal = cls.load_all_images(work_dir / 'imagesVal')
-        for image in imagesVal:
-            dataset_json.extend(
-                [
-                    {
-                        "image": str(image),
-                        "seg": str(work_dir / 'labelsVal' / (image.name)),
-                        "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
-                ]
-            )
+        # imagesVal = cls.load_all_images(work_dir / 'imagesVal')
+        # for image in imagesVal:
+        #     dataset_json.extend(
+        #         [
+        #             {
+        #                 "image": str(image),
+        #                 "seg": str(work_dir / 'labelsVal' / (image.name)),
+        #                 "seg_index": x + 1
+        #             } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
+        #         ]
+        #     )
 
         return dataset_json
 
