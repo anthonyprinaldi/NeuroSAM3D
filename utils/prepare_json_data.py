@@ -4,27 +4,27 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, List
 
-ABDOMEN_CT_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/AbdomenCT_1K')
-AMOS_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/AMOS')
-BRATS2020_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/BraTs2020')
-COVID_CT_LUNG_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/COVID_CT_Lung')
-CT_STROKE_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/CTStroke')
-HEALTHY_TOTAL_BODY_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/Healthy-Total-Body CTs NIfTI Segmentations and Segmentation Organ Values spreadsheet')
-ISLES_2022_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/ISLES-2022')
-KITS23_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/kits23')
-KNEEMRI_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/KneeMRI')
-LITS_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/LITS')
-LUNA_16_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/LUNA16')
-MM_WHS_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/MM-WHS 2017 Dataset')
-MSD_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/MSD')
-CT_ORG_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/PKG - CT-ORG')
-UPENN_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/PKG - UPENN-GBM-NIfTI')
-PROSTATE_MR_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/Prostate MR Image Segmentation')
-SEGTHOR_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/SegTHOR')
-TCIA_PANCREASE_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/TCIA_pancreas_labels-02-05-2017')
-TOTALSEGMENTATOR_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/Totalsegmentator_dataset_v201')
-ONDRI_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/wmh_hab')
-WORD_DIR = Path('/home/arinaldi/project/aiconsgrp/med_sam/WORD-V0.1.0')
+ABDOMEN_CT_DIR = Path('/home/arinaldi/project/aiconsgrp/data/AbdomenCT_1K')
+AMOS_DIR = Path('/home/arinaldi/project/aiconsgrp/data/AMOS')
+BRATS2020_DIR = Path('/home/arinaldi/project/aiconsgrp/data/BraTs2020')
+COVID_CT_LUNG_DIR = Path('/home/arinaldi/project/aiconsgrp/data/COVID_CT_Lung')
+CT_STROKE_DIR = Path('/home/arinaldi/project/aiconsgrp/data/CTStroke')
+HEALTHY_TOTAL_BODY_DIR = Path('/home/arinaldi/project/aiconsgrp/data/Healthy-Total-Body CTs NIfTI Segmentations and Segmentation Organ Values spreadsheet')
+ISLES_2022_DIR = Path('/home/arinaldi/project/aiconsgrp/data/ISLES-2022')
+KITS23_DIR = Path('/home/arinaldi/project/aiconsgrp/data/kits23')
+KNEEMRI_DIR = Path('/home/arinaldi/project/aiconsgrp/data/KneeMRI')
+LITS_DIR = Path('/home/arinaldi/project/aiconsgrp/data/LITS')
+LUNA_16_DIR = Path('/home/arinaldi/project/aiconsgrp/data/LUNA16')
+MM_WHS_DIR = Path('/home/arinaldi/project/aiconsgrp/data/MM-WHS 2017 Dataset')
+MSD_DIR = Path('/home/arinaldi/project/aiconsgrp/data/MSD')
+CT_ORG_DIR = Path('/home/arinaldi/project/aiconsgrp/data/PKG - CT-ORG')
+UPENN_DIR = Path('/home/arinaldi/project/aiconsgrp/data/PKG - UPENN-GBM-NIfTI')
+PROSTATE_MR_DIR = Path('/home/arinaldi/project/aiconsgrp/data/Prostate MR Image Segmentation')
+SEGTHOR_DIR = Path('/home/arinaldi/project/aiconsgrp/data/SegTHOR')
+TCIA_PANCREASE_DIR = Path('/home/arinaldi/project/aiconsgrp/data/TCIA_pancreas_labels-02-05-2017')
+TOTALSEGMENTATOR_DIR = Path('/home/arinaldi/project/aiconsgrp/data/Totalsegmentator_dataset_v201')
+ONDRI_DIR = Path('/home/arinaldi/project/aiconsgrp/data/wmh_hab')
+WORD_DIR = Path('/home/arinaldi/project/aiconsgrp/data/WORD-V0.1.0')
 
 
 class BaseDatasetJSONGenerator(ABC):
@@ -35,12 +35,39 @@ class BaseDatasetJSONGenerator(ABC):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return sorted([f for f in dir.glob(f'*{ext}') if contains is None or contains in f.name])        
+        return sorted([f for f in dir.glob(f'*{ext}') if contains is None or contains in f.name])
+
+    @classmethod
+    def save_dataset_json(cls,
+                          train_json: dict,
+                          val_json: Optional[dict] = None,
+                          test_json: Optional[dict] = None,
+                          filename: str = 'dataset.json'
+                          ):
+        res = {}
+        res['name'] = cls.name
+        res['modality'] = cls.modality
+        res['labels'] = cls.labels
+        res['training'] = train_json
+        res['validation'] = val_json
+        res['testing'] = test_json
+
+        with open(cls.dir / filename, 'w') as f:
+            json.dump(res, f, indent=4)
 
 
 class AbdomenCTJSONGenerator(BaseDatasetJSONGenerator):
     dir = ABDOMEN_CT_DIR
     num_seg_classes = 4
+    name = "AbdomenCT"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "liver",
+        2: "kidney",
+        3: "spleen",
+        4: "pancreas"
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -54,17 +81,37 @@ class AbdomenCTJSONGenerator(BaseDatasetJSONGenerator):
                 [
                     {
                         "image": str(image),
-                        "seg": str(work_dir / 'labelsTr' / (image.name.replace("_0000.nii.gz", ".nii.gz"))),
+                        "seg": str(work_dir / 'labelsTr' / image.name),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name.replace("_0000.nii.gz", ".nii.gz"))).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / image.name).exists()
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class AMOSJSONGenerator(BaseDatasetJSONGenerator):
     dir = AMOS_DIR
     num_seg_classes = 15
+    name = "AMOS"
+    modality = ["CT", "MRI"]
+    labels = {
+        0: "background",
+        1: "spleen",
+        2: "right kidney",
+        3: "left kidney",
+        4: "gallbladder",
+        5: "esophagus",
+        6: "liver",
+        7: "stomach",
+        8: "aorta",
+        9: "inferior vena cava",
+        10: "pancreas",
+        11: "right adrenal gland",
+        12: "left adrenal gland",
+        13: "duodenum",
+        14: "bladder",
+        15: "prostate"
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -84,28 +131,51 @@ class AMOSJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        # imagesVal = cls.load_all_images(work_dir / 'imagesVal')
+        val_json = []
+        imagesVal = cls.load_all_images(work_dir / 'imagesVal')
 
-        # for image in imagesVal:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsVal' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
-        #         ]
-        #     )
+        for image in imagesVal:
+            val_json.extend(
+                [
+                    {
+                        "image": str(image),
+                        "seg": str(work_dir / 'labelsVal' / (image.name)),
+                        "seg_index": x + 1
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
+                ]
+            )
 
-        return dataset_json
+        test_json = []
+        imagesTs = cls.load_all_images(work_dir / 'imagesTs')
+
+        for image in imagesTs:
+            test_json.extend(
+                [
+                    {
+                        "image": str(image),
+                        "seg": str(work_dir / 'labelsTs' / (image.name)),
+                        "seg_index": x + 1
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTs' / (image.name)).exists()
+                ]
+            )
+
+        cls.save_dataset_json(dataset_json, val_json=val_json, test_json=test_json)
     
 class BratsJSONGenerator(BaseDatasetJSONGenerator):
     dir = BRATS2020_DIR
     seg_class_values = [
         1, # necrotic and non-enhancing tumor core
         2, # peritumoral edema
-        4, # GD-enhancing tumor
+        4, # enhancing tumor
     ]
+    name = "BRATS"
+    modality = ["MRI"]
+    labels = {
+        0: "background",
+        1: "necrotic and nonenhancing tumor core",
+        2: "peritumoral edema",
+        4: "enhancing tumor"
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -125,7 +195,7 @@ class BratsJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -135,6 +205,13 @@ class BratsJSONGenerator(BaseDatasetJSONGenerator):
 class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
     dir = COVID_CT_LUNG_DIR
     num_seg_classes = 2
+    name = "CovidCT"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "lung",
+        2: "infection",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -164,11 +241,18 @@ class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
             )
             
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
     dir = CT_STROKE_DIR
     num_seg_classes = 1
+    name = "CTStroke"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "CBF",
+        2: "Tmax"
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -197,7 +281,7 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -207,6 +291,46 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
 class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
     dir = HEALTHY_TOTAL_BODY_DIR
     num_seg_classes = 36
+    name = "HealthyTotalBody"
+    modality = ["CT"]
+    labels = {
+        1:	"Adrenal glands",
+        2:	"Aorta",
+        3:	"Bladder",
+        4:	"Brain",
+        5:	"Heart",
+        6:	"Kidneys",
+        7:	"Liver",
+        8:	"Pancreas",
+        9:	"Spleen",
+        10:	"Thyroid",
+        11:	"VCI",
+        12:	"Lung",
+        13:	"Carpal",
+        14:	"Clavicle",
+        15:	"Femur",
+        16:	"Fibula",
+        17:	"Humerus",
+        18:	"Metacarpal",
+        19:	"Metatarsal",
+        20:	"Patella",
+        21:	"Pelvis",
+        22:	"Fingers",
+        23:	"Radius",
+        24:	"Ribcage",
+        25:	"Scapula",
+        26:	"Skull",
+        27:	"Spine",
+        28:	"Sternum",
+        29:	"Tarsal",
+        30:	"Tibia",
+        31:	"Toes",
+        32:	"Ulna",
+        33:	"Skeletal muscle",
+        34:	"Subcutaneous fat",
+        35:	"Torso fat",
+        36:	"Psoas",
+    }
     # TODO: double check the images and seg masks line up
 
     @classmethod
@@ -227,7 +351,7 @@ class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -237,6 +361,12 @@ class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
 class ISLESJSONGenerator(BaseDatasetJSONGenerator):
     dir = ISLES_2022_DIR
     num_seg_classes = 1
+    name = "ISLES"
+    modality = ["MRI"]
+    labels = {
+        0: "background",
+        1: "stroke lesion"
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -256,7 +386,7 @@ class ISLESJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -265,6 +395,15 @@ class ISLESJSONGenerator(BaseDatasetJSONGenerator):
 class KitsJSONGenerator(BaseDatasetJSONGenerator):
     dir = KITS23_DIR
     num_seg_classes = 2
+    name = "Kits"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "kidney",
+        2: "tumor",
+        3: "cyst",
+    }
+
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -284,11 +423,22 @@ class KitsJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class KneeJSONGenerator(BaseDatasetJSONGenerator):
     dir = KNEEMRI_DIR
     num_seg_classes = 6
+    name = "StanfordKnee"
+    modality = ["MRI"]
+    labels = {
+        0: "background",
+        1: "patellar cartilage",
+        2: "femoral cartilage",
+        3: "tibial cartilage medial",
+        4: "tibial cartilage lateral",
+        5: "meniscus medial",
+        6: "meniscus lateral",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -302,17 +452,24 @@ class KneeJSONGenerator(BaseDatasetJSONGenerator):
                 [
                     {
                         "image": str(image),
-                        "seg": str(work_dir / 'labelsTr' / (image.name)), # TODO: which seg labels?
+                        "seg": str(work_dir / 'labelsTr_dicom' / (image.name)),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr_dicom' / (image.name)).exists()
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class LITSJSONGenerator(BaseDatasetJSONGenerator):
     dir = LITS_DIR
     num_seg_classes = 2
+    name = "LiTS"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "liver",
+        2: "tumor",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -332,11 +489,19 @@ class LITSJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class LUNAJSONGenerator(BaseDatasetJSONGenerator):
     dir = LUNA_16_DIR
     num_seg_classes = 2
+    name = "LUNA"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        5: "trachea",
+        4: "left lung",
+        3: "right lung",
+    } # TODO: double check
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -356,7 +521,7 @@ class LUNAJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class MMWHSJSONGenerator(BaseDatasetJSONGenerator):
     dir = MM_WHS_DIR
@@ -369,6 +534,18 @@ class MMWHSJSONGenerator(BaseDatasetJSONGenerator):
         820, # ascending aorta
         850, # descending artery
     ]
+    name = "MultiModalWholeHeart"
+    modality = ["MRI", "CT"]
+    labels = {
+        0: "background",
+        500: "left ventricle",
+        600: "right ventricle",
+        420: "left atrium",
+        550: "right atrium",
+        205: "myocardium",
+        820: "ascending aorta",
+        850: "descending artery",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -401,10 +578,15 @@ class MMWHSJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class MSDJSONGenerator(BaseDatasetJSONGenerator):
     dir = MSD_DIR
+    name = "MedSamDecathlon"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+    } # TODO: might be good already
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -437,12 +619,23 @@ class MSDJSONGenerator(BaseDatasetJSONGenerator):
                     ]
                 )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
 
 class CTORGJSONGenerator(BaseDatasetJSONGenerator):
     dir = CT_ORG_DIR
     num_seg_classes = 5
+    name = "CTOrgan"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "liver",
+        2: "bladder",
+        3: "lungs",
+        4: "kidneys",
+        5: "bone",
+        6: "brain",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -456,17 +649,23 @@ class CTORGJSONGenerator(BaseDatasetJSONGenerator):
                 [
                     {
                         "image": str(image),
-                        "seg": str(work_dir / 'labelsTr' / (image.name.replace("volume", "labels"))),
+                        "seg": str(work_dir / 'labelsTr' / image.name),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name.replace("volume", "labels"))).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / image.name).exists()
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
 class UpennJSONGenerator(BaseDatasetJSONGenerator):
     dir = UPENN_DIR
     num_seg_classes = 4
+    name = "MRIGlioblastoma"
+    modality = ["MRI"]
+    labels = {
+        0: "background",
+        # TODO: do   
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -495,7 +694,7 @@ class UpennJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -505,6 +704,12 @@ class UpennJSONGenerator(BaseDatasetJSONGenerator):
 class ProstateJSONGenerator(BaseDatasetJSONGenerator):
     dir = PROSTATE_MR_DIR
     num_seg_classes = 1
+    name = "ProstateMRI"
+    modality = ["MRI"]
+    labels = {
+        0: "background",
+        1: "prostate",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -524,12 +729,21 @@ class ProstateJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
 
 class SegTHORJSONGenerator(BaseDatasetJSONGenerator):
     dir = SEGTHOR_DIR
     num_seg_classes = 4
+    name = "SegThoracicOrgans"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "esophagus",
+        2: "heart",
+        3: "trachea",
+        4: "aorta",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -549,11 +763,17 @@ class SegTHORJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
     
 class TCIAPancreasJSONGenerator(BaseDatasetJSONGenerator):
     dir = TCIA_PANCREASE_DIR
     num_seg_classes = 1
+    name = "PancreasCt"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "pancreas",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -567,17 +787,20 @@ class TCIAPancreasJSONGenerator(BaseDatasetJSONGenerator):
                 [
                     {
                         "image": str(image),
-                        "seg": str(work_dir / 'labelsTr' / (image.name.replace("image", "label"))),
+                        "seg": str(work_dir / 'labelsTr' / image.name),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name.replace("image", "label"))).exists()
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / image.name).exists()
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
 
 class TotalSegmentatorJSONGenerator(BaseDatasetJSONGenerator):
     dir = TOTALSEGMENTATOR_DIR
+    name = "TotalSegmentator"
+    modality = ["CT"]
+    labels = {} # TODO: labels already separated
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -599,12 +822,19 @@ class TotalSegmentatorJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json)
 
 
 class ONDRIJSONGenerator(BaseDatasetJSONGenerator):
     dir = ONDRI_DIR
     num_seg_classes = 1
+    name = "ONDRI"
+    modality = ["MRI"]
+    labels = {
+        0: "background",
+        1: "brain",
+        2: "wmh",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -632,29 +862,30 @@ class ONDRIJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        # imagesVal = cls.load_all_images(work_dir / 'imagesVal')
-        # for image in imagesVal:
-        #     if "masked" not in str(image):
-        #         dataset_json.extend(
-        #             [
-        #                 {
-        #                     "image": str(image),
-        #                     "seg": str(work_dir / 'labelsVal_brain' / (image.name)),
-        #                     "seg_index": x + 1
-        #                 } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_brain' / (image.name)).exists()
-        #             ]
-        #         )
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsVal_wmh' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_wmh' / (image.name)).exists()
-        #         ]
-        #     )
+        val_json = []
+        imagesVal = cls.load_all_images(work_dir / 'imagesVal')
+        for image in imagesVal:
+            if "masked" not in str(image):
+                val_json.extend(
+                    [
+                        {
+                            "image": str(image),
+                            "seg": str(work_dir / 'labelsVal_brain' / (image.name)),
+                            "seg_index": x + 1
+                        } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_brain' / (image.name)).exists()
+                    ]
+                )
+            val_json.extend(
+                [
+                    {
+                        "image": str(image),
+                        "seg": str(work_dir / 'labelsVal_wmh' / (image.name)),
+                        "seg_index": x + 1
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal_wmh' / (image.name)).exists()
+                ]
+            )
 
-        return dataset_json
+        cls.save_dataset_json(dataset_json, val_json=val_json)
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -664,6 +895,27 @@ class ONDRIJSONGenerator(BaseDatasetJSONGenerator):
 class WORDJSONGenerator(BaseDatasetJSONGenerator):
     dir = WORD_DIR
     num_seg_classes = 16
+    name = "WORD"
+    modality = ["CT"]
+    labels = {
+        0: "background",
+        1: "liver",
+        2: "spleen",
+        3: "kidney left",
+        4: "kidney right",
+        5: "stomach",
+        6: "gallbladder",
+        7: "esophagus",
+        8: "pancreas",
+        9: "duodenum",
+        10: "colon",
+        11: "intestine",
+        12: "adrenal",
+        13: "recturm",
+        14: "bladder",
+        15: "head of femur left",
+        16: "head of femur right",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -681,20 +933,20 @@ class WORDJSONGenerator(BaseDatasetJSONGenerator):
                     } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
                 ]
             )
+        val_json = []
+        imagesVal = cls.load_all_images(work_dir / 'imagesVal')
+        for image in imagesVal:
+            val_json.extend(
+                [
+                    {
+                        "image": str(image),
+                        "seg": str(work_dir / 'labelsVal' / (image.name)),
+                        "seg_index": x + 1
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
+                ]
+            )
 
-        # imagesVal = cls.load_all_images(work_dir / 'imagesVal')
-        # for image in imagesVal:
-        #     dataset_json.extend(
-        #         [
-        #             {
-        #                 "image": str(image),
-        #                 "seg": str(work_dir / 'labelsVal' / (image.name)),
-        #                 "seg_index": x + 1
-        #             } for x in range(cls.num_seg_classes) if (work_dir / 'labelsVal' / (image.name)).exists()
-        #         ]
-        #     )
-
-        return dataset_json
+        cls.save_dataset_json(dataset_json, val_json=val_json)
 
 
 
@@ -722,10 +974,10 @@ if __name__ == "__main__":
         BratsJSONGenerator,
         CovidCTJSONGenerator,
         CTStrokeJSONGenerator,
-        HealthyTotalBodyJSONGenerator, # need image locations
+        HealthyTotalBodyJSONGenerator,
         ISLESJSONGenerator,
         KitsJSONGenerator,
-        KneeJSONGenerator, # need to choose seg
+        KneeJSONGenerator,
         LITSJSONGenerator,
         LUNAJSONGenerator,
         MMWHSJSONGenerator,
@@ -734,7 +986,7 @@ if __name__ == "__main__":
         UpennJSONGenerator,
         ProstateJSONGenerator,
         SegTHORJSONGenerator,
-        TCIAPancreasJSONGenerator, # need image locations
+        TCIAPancreasJSONGenerator,
         TotalSegmentatorJSONGenerator,
         ONDRIJSONGenerator,
         WORDJSONGenerator
@@ -743,3 +995,4 @@ if __name__ == "__main__":
     joiner = JSONJoiner(*all_data_classes)
 
     joiner.save_json('dataset.json')
+    # joiner._generate()
