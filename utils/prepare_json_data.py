@@ -88,6 +88,7 @@ class AbdomenCTJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class AMOSJSONGenerator(BaseDatasetJSONGenerator):
     dir = AMOS_DIR
@@ -160,6 +161,7 @@ class AMOSJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json, val_json=val_json, test_json=test_json)
+        return dataset_json
     
 class BratsJSONGenerator(BaseDatasetJSONGenerator):
     dir = BRATS2020_DIR
@@ -196,6 +198,7 @@ class BratsJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -242,6 +245,7 @@ class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
             
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
     dir = CT_STROKE_DIR
@@ -282,6 +286,7 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -352,6 +357,7 @@ class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -387,6 +393,7 @@ class ISLESJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -424,6 +431,7 @@ class KitsJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class KneeJSONGenerator(BaseDatasetJSONGenerator):
     dir = KNEEMRI_DIR
@@ -459,6 +467,7 @@ class KneeJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class LITSJSONGenerator(BaseDatasetJSONGenerator):
     dir = LITS_DIR
@@ -490,6 +499,7 @@ class LITSJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class LUNAJSONGenerator(BaseDatasetJSONGenerator):
     dir = LUNA_16_DIR
@@ -522,6 +532,7 @@ class LUNAJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class MMWHSJSONGenerator(BaseDatasetJSONGenerator):
     dir = MM_WHS_DIR
@@ -579,6 +590,7 @@ class MMWHSJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class MSDJSONGenerator(BaseDatasetJSONGenerator):
     dir = MSD_DIR
@@ -620,6 +632,7 @@ class MSDJSONGenerator(BaseDatasetJSONGenerator):
                 )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
 
 class CTORGJSONGenerator(BaseDatasetJSONGenerator):
@@ -656,6 +669,7 @@ class CTORGJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
 class UpennJSONGenerator(BaseDatasetJSONGenerator):
     dir = UPENN_DIR
@@ -695,6 +709,7 @@ class UpennJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -730,6 +745,7 @@ class ProstateJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
 
 class SegTHORJSONGenerator(BaseDatasetJSONGenerator):
@@ -764,6 +780,7 @@ class SegTHORJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
     
 class TCIAPancreasJSONGenerator(BaseDatasetJSONGenerator):
     dir = TCIA_PANCREASE_DIR
@@ -794,6 +811,7 @@ class TCIAPancreasJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
 
 class TotalSegmentatorJSONGenerator(BaseDatasetJSONGenerator):
@@ -823,6 +841,7 @@ class TotalSegmentatorJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json)
+        return dataset_json
 
 
 class ONDRIJSONGenerator(BaseDatasetJSONGenerator):
@@ -886,6 +905,7 @@ class ONDRIJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json, val_json=val_json)
+        return dataset_json
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
@@ -947,6 +967,7 @@ class WORDJSONGenerator(BaseDatasetJSONGenerator):
             )
 
         cls.save_dataset_json(dataset_json, val_json=val_json)
+        return dataset_json
 
 
 
