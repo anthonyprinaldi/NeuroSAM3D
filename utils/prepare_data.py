@@ -1,19 +1,38 @@
-# -*- encoding: utf-8 -*-
-'''
-@File    :   prepare_data_from_nnUNet.py
-@Time    :   2023/12/10 23:07:39
-@Author  :   Haoyu Wang 
-@Contact :   small_dark@sina.com
-@Brief   :   pre-process nnUNet-style dataset into SAM-Med3D-style
-'''
-
-import os.path as osp
-import os
 import json
+import os
+import os.path as osp
 import shutil
+
 import nibabel as nib
-from tqdm import tqdm
 import torchio as tio
+from prepare_json_data import *
+from tqdm import tqdm
+
+DATASET_ROOT = "../data"
+DATASET_LIST = [
+    AbdomenCTJSONGenerator,
+    AMOSJSONGenerator,
+    BratsJSONGenerator,
+    CovidCTJSONGenerator,
+    CTStrokeJSONGenerator,
+    HealthyTotalBodyJSONGenerator,
+    ISLESJSONGenerator,
+    KitsJSONGenerator,
+    KneeJSONGenerator,
+    LITSJSONGenerator,
+    LUNAJSONGenerator,
+    MMWHSJSONGenerator,
+    MSDJSONGenerator,
+    CTORGJSONGenerator,
+    UpennJSONGenerator,
+    ProstateJSONGenerator,
+    SegTHORJSONGenerator,
+    TCIAPancreasJSONGenerator,
+    TotalSegmentatorJSONGenerator,
+    ONDRIJSONGenerator,
+    WORDJSONGenerator
+]
+TARGET_DIR = "./data/medical_preprocessed"
 
 def resample_nii(input_path: str, output_path: str, target_spacing: tuple = (1.5, 1.5, 1.5), n=None, reference_image=None, mode="linear"):
     """
@@ -32,7 +51,7 @@ def resample_nii(input_path: str, output_path: str, target_spacing: tuple = (1.5
     resampler = tio.Resample(target=target_spacing, image_interpolation=mode)
     resampled_subject = resampler(subject)
     
-    if(n!=None):
+    if(n is not None):
         image = resampled_subject.img
         tensor_data = image.data
         if(isinstance(n, int)):
@@ -50,61 +69,57 @@ def resample_nii(input_path: str, output_path: str, target_spacing: tuple = (1.5
     
     save_image.save(output_path)
 
-dataset_root = "./data"
-dataset_list = [
-    'AMOS_val',
-]
 
-target_dir = "./data/medical_preprocessed"
+def main():
+    for dataset in DATASET_LIST:
+        dataset_dir = dataset.dir
+        meta_info = json.load(open(osp.join(dataset_dir, "dataset.json")))
 
-
-for dataset in dataset_list:
-    dataset_dir = osp.join(dataset_root, dataset)
-    meta_info = json.load(open(osp.join(dataset_dir, "dataset.json")))
-
-    print(meta_info['name'], meta_info['modality'])
-    num_classes = len(meta_info["labels"])-1
-    print("num_classes:", num_classes, meta_info["labels"])
-    resample_dir = osp.join(dataset_dir, "imagesTr_1.5") 
-    os.makedirs(resample_dir, exist_ok=True)
-    for idx, cls_name in meta_info["labels"].items():
-        cls_name = cls_name.replace(" ", "_")
-        idx = int(idx)
-        dataset_name = dataset.split("_", maxsplit=1)[1]
-        target_cls_dir = osp.join(target_dir, cls_name, dataset_name)
-        target_img_dir = osp.join(target_cls_dir, "imagesTr")
-        target_gt_dir = osp.join(target_cls_dir, "labelsTr")
-        os.makedirs(target_img_dir, exist_ok=True)
-        os.makedirs(target_gt_dir, exist_ok=True)
+        print(meta_info['name'], meta_info['modality'])
+        num_classes = len(meta_info["labels"])-1
+        print("num_classes:", num_classes, meta_info["labels"])
+        resample_img_dir = osp.join(dataset_dir, "imagesTr_1.5")
+        print(f"{resample_img_dir=}")
+        # continue
+        os.makedirs(resample_img_dir, exist_ok=True)
+        # for idx, cls_name in meta_info["labels"].items():
+        dataset_name = dataset.name
         for item in tqdm(meta_info["training"], desc=f"{dataset_name}-{cls_name}"):
-            img, gt = item["image"], item["label"]
-            img = osp.join(dataset_dir, img.replace(".nii.gz", "_0000.nii.gz"))
-            gt = osp.join(dataset_dir, gt)
-            resample_img = osp.join(resample_dir, osp.basename(img))
+            
+            img, seg, seg_idx = item["image"], item["seg"], int(item["seg_idx"])
+            
+            cls_name = meta_info["labels"][str(seg_idx)].replace(" ", "_")
+
+            target_cls_dir = osp.join(TARGET_DIR, cls_name, dataset_name)
+            target_img_dir = osp.join(target_cls_dir, "imagesTr")
+            target_seg_dir = osp.join(target_cls_dir, "labelsTr")
+            os.makedirs(target_img_dir, exist_ok=True)
+            os.makedirs(target_seg_dir, exist_ok=True)
+
+            resample_img = osp.join(resample_img_dir, osp.basename(img))
             if(not osp.exists(resample_img)):
-                resample_nii(img, resample_img)
+                # resample_nii(img, resample_img)
+                tqdm.write("resampling...")
             img = resample_img
 
-            target_img_path = osp.join(target_img_dir, osp.basename(img).replace("_0000.nii.gz", ".nii.gz"))
-            target_gt_path = osp.join(target_gt_dir, osp.basename(gt).replace("_0000.nii.gz", ".nii.gz"))
+            target_img_path = osp.join(target_img_dir, osp.basename(img))
+            target_seg_path = osp.join(target_seg_dir, osp.basename(seg))
 
-            gt_img = nib.load(gt)    
-            spacing = tuple(gt_img.header['pixdim'][1:4])
+            seg_img = nib.load(seg)    
+            spacing = tuple(seg_img.header['pixdim'][1:4])
             spacing_voxel = spacing[0] * spacing[1] * spacing[2]
-            gt_arr = gt_img.get_fdata()
-            gt_arr[gt_arr != idx] = 0
-            gt_arr[gt_arr != 0] = 1
-            volume = gt_arr.sum()*spacing_voxel
-            if(volume<10): 
-                print("skip", target_img_path)
+            seg_arr = seg_img.get_fdata()
+            seg_arr[seg_arr != seg_idx] = 0
+            seg_arr[seg_arr != 0] = 1
+            volume = seg_arr.sum()*spacing_voxel
+            if(volume<10): # TODO: select this value
+                tqdm.write("skip", target_img_path)
                 continue
 
             reference_image = tio.ScalarImage(img)
-            if(meta_info['name']=="kits23" and idx==1):
-                resample_nii(gt, target_gt_path, n=[1,2,3], reference_image=reference_image, mode="nearest")
-            else:
-                resample_nii(gt, target_gt_path, n=idx, reference_image=reference_image, mode="nearest")
-            shutil.copy(img, target_img_path)
+            tqdm.write("resampling seg...")
+            # resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
+            # shutil.copy(img, target_img_path)
 
-
-
+if __name__ == "__main__":
+    main()
