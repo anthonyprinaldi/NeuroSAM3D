@@ -108,9 +108,14 @@ def main():
                 tqdm.write("resampling...")
             img = resample_img
 
-            target_seg_path = osp.join(
+            target_seg_class_dir = osp.join(
                 target_seg_dir,
-                cls_name + (f"_{seg_ext}" if seg_ext else ""),
+                cls_name + (f"_{seg_ext}" if seg_ext else "")
+            )
+            os.makedirs(target_seg_class_dir, exist_ok=True)
+
+            target_seg_path = osp.join(
+                target_seg_class_dir,
                 osp.basename(seg)
             )
 
