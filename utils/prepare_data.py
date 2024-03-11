@@ -78,32 +78,41 @@ def main():
         print(meta_info['name'], meta_info['modality'])
         num_classes = len(meta_info["labels"])-1
         print("num_classes:", num_classes, meta_info["labels"])
-        resample_img_dir = osp.join(dataset_dir, "imagesTr_1.5")
-        print(f"{resample_img_dir=}")
-        # continue
-        os.makedirs(resample_img_dir, exist_ok=True)
+        # resample_img_dir = osp.join(dataset_dir, "imagesTr_1.5")
+        # print(f"{resample_img_dir=}")
+
+        # os.makedirs(resample_img_dir, exist_ok=True)
         # for idx, cls_name in meta_info["labels"].items():
         dataset_name = dataset.name
-        for item in tqdm(meta_info["training"], desc=f"{dataset_name}-{cls_name}"):
+        for item in tqdm(meta_info["training"], desc=f"{dataset_name}"):
             
-            img, seg, seg_idx = item["image"], item["seg"], int(item["seg_idx"])
+            img, seg, seg_idx = item["image"], item["seg"], int(item["seg_index"])
             
             cls_name = meta_info["labels"][str(seg_idx)].replace(" ", "_")
 
-            target_cls_dir = osp.join(TARGET_DIR, cls_name, dataset_name)
-            target_img_dir = osp.join(target_cls_dir, "imagesTr")
-            target_seg_dir = osp.join(target_cls_dir, "labelsTr")
+            img_parent_folder = Path(img).parent.parts[-1]
+            img_ext = img_parent_folder.split("_")[-1] if "_" in img_parent_folder else ""
+
+            seg_parent_folder = Path(seg).parent.parts[-1]
+            seg_ext = seg_parent_folder.split("_")[-1] if "_" in seg_parent_folder else ""
+
+            target_save_dir = osp.join(TARGET_DIR, dataset_name)
+            target_img_dir = osp.join(target_save_dir, "imagesTr" + (f"_{img_ext}" if img_ext else ""))
+            target_seg_dir = osp.join(target_save_dir, "labelsTr")
             os.makedirs(target_img_dir, exist_ok=True)
             os.makedirs(target_seg_dir, exist_ok=True)
 
-            resample_img = osp.join(resample_img_dir, osp.basename(img))
+            resample_img = osp.join(target_img_dir, osp.basename(img))
             if(not osp.exists(resample_img)):
-                # resample_nii(img, resample_img)
+                resample_nii(img, resample_img)
                 tqdm.write("resampling...")
             img = resample_img
 
-            target_img_path = osp.join(target_img_dir, osp.basename(img))
-            target_seg_path = osp.join(target_seg_dir, osp.basename(seg))
+            target_seg_path = osp.join(
+                target_seg_dir,
+                cls_name + (f"_{seg_ext}" if seg_ext else ""),
+                osp.basename(seg)
+            )
 
             seg_img = nib.load(seg)    
             spacing = tuple(seg_img.header['pixdim'][1:4])
@@ -113,13 +122,15 @@ def main():
             seg_arr[seg_arr != 0] = 1
             volume = seg_arr.sum()*spacing_voxel
             if(volume<10): # TODO: select this value
-                tqdm.write("skip", target_img_path)
+                tqdm.write("skip", img)
+                os.remove(img)
                 continue
 
             reference_image = tio.ScalarImage(img)
             tqdm.write("resampling seg...")
-            # resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
-            # shutil.copy(img, target_img_path)
+            resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
+            # shutil.move(img, target_img_path)
+            exit(-100)
 
 if __name__ == "__main__":
     main()
