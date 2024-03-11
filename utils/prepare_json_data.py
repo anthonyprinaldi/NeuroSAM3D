@@ -508,10 +508,10 @@ class LUNAJSONGenerator(BaseDatasetJSONGenerator):
     modality = ["CT"]
     labels = {
         0: "background",
-        5: "trachea",
-        4: "left lung",
         3: "right lung",
-    } # TODO: double check
+        4: "left lung",
+        5: "trachea",
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -597,8 +597,48 @@ class MSDJSONGenerator(BaseDatasetJSONGenerator):
     name = "MedSamDecathlon"
     modality = ["CT"]
     labels = {
-        0: "background",
-    } # TODO: might be good already
+        "Task02_Heart": {
+            0: "background",
+            1: "left atrium",
+        },
+        "Task03_Liver": {
+            0: "background",
+            1: "liver",
+            2: "tumor",
+        },
+        "Task04_Hippocampus": {
+            0: "background",
+            1: "anterior hippocampus",
+            2: "posterior hippocampus",
+        },
+        "Task05_Prostate": {
+            0: "background",
+            1: "peripheral zone",
+            2: "transition zone",
+        },
+        "Task06_Lung": {
+            0: "background",
+            1: "tumor",
+        },
+        "Task07_Pancreas": {
+            0: "background",
+            1: "pancreatic parenchyma",
+            2: "pancreatic mass",
+        },
+        "Task08_HepaticVessel": {
+            0: "background",
+            1: "vessel",
+            2: "tumor",
+        },
+        "Task09_Spleen": {
+            0: "background",
+            1: "spleen",
+        },
+        "Task10_Colon": {
+            0: "background",
+            1: "colon cancer primaries",
+        },
+    }
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -620,6 +660,7 @@ class MSDJSONGenerator(BaseDatasetJSONGenerator):
         for sub_dir, num_seg_classes in sub_dirs.items():
             work_dir = base_work_dir / sub_dir
             imagesTr = cls.load_all_images(work_dir / 'imagesTr')
+            imagesTr = [f for f in imagesTr if not f.name.startswith("._")]
             for image in imagesTr:
                 dataset_json.extend(
                     [
@@ -678,7 +719,10 @@ class UpennJSONGenerator(BaseDatasetJSONGenerator):
     modality = ["MRI"]
     labels = {
         0: "background",
-        # TODO: do   
+        1: "necrotic tumor core",
+        2: "edema",
+        # no class 3
+        4: "enhancing tumor",
     }
 
     @classmethod
@@ -818,7 +862,7 @@ class TotalSegmentatorJSONGenerator(BaseDatasetJSONGenerator):
     dir = TOTALSEGMENTATOR_DIR
     name = "TotalSegmentator"
     modality = ["CT"]
-    labels = {} # TODO: labels already separated
+    labels = {} # labels already separated
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
