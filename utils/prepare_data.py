@@ -87,8 +87,13 @@ def main():
         for item in tqdm(meta_info["training"], desc=f"{dataset_name}"):
             
             img, seg, seg_idx = item["image"], item["seg"], int(item["seg_index"])
-            
-            cls_name = meta_info["labels"][str(seg_idx)].replace(" ", "_")
+            if dataset_name == "TotalSegmentator":
+                cls_name = Path(seg).parts[-1].split("_", maxsplit=1)[1].replace(".nii.gz", "")
+            elif dataset_name == "MedSamDecathlon":
+                task = Path(seg).parts[-3]
+                cls_name = meta_info["labels"][task][str(seg_idx)].replace(" ", "_")
+            else:
+                cls_name = meta_info["labels"][str(seg_idx)].replace(" ", "_")
 
             img_parent_folder = Path(img).parent.parts[-1]
             img_ext = img_parent_folder.split("_")[-1] if "_" in img_parent_folder else ""
@@ -114,10 +119,16 @@ def main():
             )
             os.makedirs(target_seg_class_dir, exist_ok=True)
 
-            target_seg_path = osp.join(
-                target_seg_class_dir,
-                osp.basename(seg)
-            )
+            if dataset_name == "TotalSegmentator":
+                target_seg_path = osp.join(
+                    target_seg_class_dir,
+                    osp.basename(seg).replace("_" + cls_name, "")
+                )
+            else:
+                target_seg_path = osp.join(
+                    target_seg_class_dir,
+                    osp.basename(seg)
+                )
 
             seg_img = nib.load(seg)    
             spacing = tuple(seg_img.header['pixdim'][1:4])
@@ -127,7 +138,7 @@ def main():
             seg_arr[seg_arr != 0] = 1
             volume = seg_arr.sum()*spacing_voxel
             if(volume<10): # TODO: select this value
-                tqdm.write("skip", img)
+                tqdm.write(f"skiping too small:\n{img=}, {seg=}, {cls_name=}")
                 os.remove(img)
                 continue
 
@@ -135,7 +146,7 @@ def main():
             tqdm.write("resampling seg...")
             resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
             # shutil.move(img, target_img_path)
-            exit(-100)
+
 
 if __name__ == "__main__":
     main()
