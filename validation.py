@@ -1,23 +1,26 @@
 import os
+
 join = os.path.join
-import numpy as np
-from glob import glob
-import torch
-from segment_anything.build_sam3D import sam_model_registry3D
-from segment_anything.utils.transforms3D import ResizeLongestSide3D
-from segment_anything import sam_model_registry
-from tqdm import tqdm
 import argparse
-import SimpleITK as sitk
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import SimpleITK as sitk
-import torchio as tio
-import numpy as np
-from collections import OrderedDict, defaultdict
 import json
 import pickle
-from utils.click_method import get_next_click3D_torch_ritm, get_next_click3D_torch_2
+from collections import OrderedDict, defaultdict
+from glob import glob
+from pathlib import Path
+
+import numpy as np
+import SimpleITK as sitk
+import torch
+import torch.nn.functional as F
+import torchio as tio
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from segment_anything import sam_model_registry
+from segment_anything.build_sam3D import sam_model_registry3D
+from segment_anything.utils.transforms3D import ResizeLongestSide3D
+from utils.click_method import (get_next_click3D_torch_2,
+                                get_next_click3D_torch_ritm)
 from utils.data_loader import Dataset_Union_ALL_Val
 
 parser = argparse.ArgumentParser()
@@ -284,7 +287,8 @@ def finetune_model_predict3D(img3D, gt3D, sam_model_tune, device='cuda', click_m
     return pred_list, click_points, click_labels, iou_list, dice_list
 
 if __name__ == "__main__":    
-    all_dataset_paths = glob(join(args.test_data_path, "*", "*"))
+    # all_dataset_paths = glob(join(args.test_data_path, "*", "*"))
+    all_dataset_paths = Path(args.test_data_path).glob("./*")
     all_dataset_paths = list(filter(os.path.isdir, all_dataset_paths))
     print("get", len(all_dataset_paths), "datasets")
 

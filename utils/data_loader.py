@@ -1,12 +1,12 @@
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-import torchio as tio
-import torch
-import numpy as np
 import os
-import torch
+from pathlib import Path
+
+import numpy as np
 import SimpleITK as sitk
+import torch
+import torchio as tio
 from prefetch_generator import BackgroundGenerator
+from torch.utils.data import DataLoader, Dataset
 
 
 class Dataset_Union_ALL(Dataset): 
@@ -82,29 +82,23 @@ class Dataset_Union_ALL(Dataset):
 
         # if ${path}/labelsTr exists, search all .nii.gz
         for path in paths:
-            d = os.path.join(path, f'labels{self.data_type}')
-            if os.path.exists(d):
-                for name in os.listdir(d):
-                    base = os.path.basename(name).split('.nii.gz')[0]
-                    label_path = os.path.join(path, f'labels{self.data_type}', f'{base}.nii.gz')
-                    self.image_paths.append(label_path.replace('labels', 'images'))
-                    self.label_paths.append(label_path)
+            label_dirs = Path(path).glob(f"labels{self.data_type}/*")
+            for label_dir in label_dirs:
+                if label_dir.is_dir():
+                    for file in label_dir.glob("*.nii*"):
+                        # label_path = path / label_dir / file.name
+                        # find all coresponding image files
+                        train_dirs = Path(path).glob(f"images{self.data_type}*")
+                        train_dirs = list(filter(lambda x: x.is_dir(), train_dirs))
+                        image_paths = [dir / file.name for dir in train_dirs]
+                        label_paths = [file] * len(image_paths)
+                        self.image_paths.extend(image_paths)
+                        self.label_paths.extend(label_paths)
 
 class Dataset_Union_ALL_Val(Dataset_Union_ALL):
     def _set_file_paths(self, paths):
-        self.image_paths = []
-        self.label_paths = []
-
-        # if ${path}/labelsTr exists, search all .nii.gz
-        for path in paths:
-            for dt in ["Tr", "Val", "Ts"]:
-                d = os.path.join(path, f'labels{dt}')
-                if os.path.exists(d):
-                    for name in os.listdir(d):
-                        base = os.path.basename(name).split('.nii.gz')[0]
-                        label_path = os.path.join(path, f'labels{dt}', f'{base}.nii.gz') 
-                        self.image_paths.append(label_path.replace('labels', 'images'))
-                        self.label_paths.append(label_path)
+        super()._set_file_paths(paths)
+        
         self.image_paths = self.image_paths[self.split_idx::self.split_num]
         self.label_paths = self.label_paths[self.split_idx::self.split_num]
 
