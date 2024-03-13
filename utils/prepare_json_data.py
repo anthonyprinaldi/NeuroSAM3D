@@ -207,13 +207,20 @@ class BratsJSONGenerator(BaseDatasetJSONGenerator):
 
 class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
     dir = COVID_CT_LUNG_DIR
-    num_seg_classes = 2
+    num_seg_classes_infection = 1
+    num_seg_classes_lung = 2
     name = "CovidCT"
     modality = ["CT"]
     labels = {
-        0: "background",
-        1: "lung",
-        2: "infection",
+        "infection" : {
+            0: "background",
+            1: "infection"
+        },
+        "lung" : {
+            0: "background",
+            1: "right lung",
+            2: "left lung"
+        }
     }
 
     @classmethod
@@ -230,7 +237,7 @@ class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr_lung' / (image.name)),
                         "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr_lung' / (image.name)).exists()
+                    } for x in range(cls.num_seg_classes_lung) if (work_dir / 'labelsTr_lung' / (image.name)).exists()
                 ]
             )
             dataset_json.extend(
@@ -239,7 +246,7 @@ class CovidCTJSONGenerator(BaseDatasetJSONGenerator):
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr_infection' / (image.name)),
                         "seg_index": x + 1
-                    } for x in range(1) if (work_dir / 'labelsTr_infection' / (image.name)).exists()
+                    } for x in range(cls.num_seg_classes_infection) if (work_dir / 'labelsTr_infection' / (image.name)).exists()
                 ]
             )
             
@@ -253,9 +260,14 @@ class CTStrokeJSONGenerator(BaseDatasetJSONGenerator):
     name = "CTStroke"
     modality = ["CT"]
     labels = {
-        0: "background",
-        1: "CBF",
-        2: "Tmax"
+        "CBF" : {
+            0: "background",
+            1: "CBF",
+        },
+        "Tmax" : {
+            0: "background",
+            1: "Tmax",
+        }
     }
 
     @classmethod

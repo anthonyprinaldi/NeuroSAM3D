@@ -63,7 +63,7 @@ def resample_nii(input_path: str, output_path: str, target_spacing: tuple = (1.5
         tensor_data[tensor_data != 0] = 1
         save_image = tio.ScalarImage(tensor=tensor_data, affine=image.affine)
         reference_size = reference_image.shape[1:]  # omitting the channel dimension
-        cropper_or_padder = tio.CropOrPad(reference_size)
+        cropper_or_padder = tio.CropOrPad(reference_size) # TODO: do we need to crop
         save_image = cropper_or_padder(save_image)
     else:
         save_image = resampled_subject.img
@@ -76,19 +76,15 @@ def main(args):
 
     for dataset in DATASET_LIST:
         dataset_dir = dataset.dir
+        dataset_json = []
         meta_info = json.load(open(osp.join(dataset_dir, "dataset.json")))
 
         print(meta_info['name'], meta_info['modality'])
         num_classes = len(meta_info["labels"])-1
         print("num_classes:", num_classes, meta_info["labels"])
-        # resample_img_dir = osp.join(dataset_dir, "imagesTr_1.5")
-        # print(f"{resample_img_dir=}")
 
-        # os.makedirs(resample_img_dir, exist_ok=True)
-        # for idx, cls_name in meta_info["labels"].items():
         dataset_name = dataset.name
 
-        # check if dataset is already done
         target_save_dir = osp.join(TARGET_DIR, dataset_name)
 
         data_list = meta_info[{
@@ -104,6 +100,12 @@ def main(args):
                 cls_name = Path(seg).parts[-1].split("_", maxsplit=1)[1].replace(".nii.gz", "")
             elif dataset_name == "MedSamDecathlon":
                 task = Path(seg).parts[-3]
+                cls_name = meta_info["labels"][task][str(seg_idx)].replace(" ", "_")
+            elif dataset_name == "CovidCT":
+                task = Path(seg).parts[-2].split("_")[1]
+                cls_name = meta_info["labels"][task][str(seg_idx)].replace(" ", "_")
+            elif dataset_name == "CTStroke":
+                task = Path(seg).parts[-2].split("_")[1]
                 cls_name = meta_info["labels"][task][str(seg_idx)].replace(" ", "_")
             else:
                 cls_name = meta_info["labels"][str(seg_idx)].replace(" ", "_")
@@ -151,7 +153,6 @@ def main(args):
             volume = seg_arr.sum()*spacing_voxel
             if(volume<10): # TODO: select this value
                 tqdm.write(f"skiping too small:\n{img=}, {seg=}, {cls_name=}")
-                os.remove(img)
                 continue
 
             reference_image = tio.ScalarImage(img)
@@ -160,7 +161,15 @@ def main(args):
                 continue
             tqdm.write("resampling seg...")
             resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
-            # shutil.move(img, target_img_path)
+            
+            dataset_json.append({
+                "image": img,
+                "label": target_seg_path,
+                "class": cls_name,
+            })
+
+        with open(Path(TARGET_DIR) / f"{dataset_name}_{dt}.json", "w") as f:
+            json.dump(dataset_json, f, indent=4)
 
 def parser():
     parser = argparse.ArgumentParser(description="Prepare the medical data for training")
