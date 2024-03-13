@@ -161,7 +161,6 @@ def main(args):
             reference_image = tio.ScalarImage(img)
             if osp.exists(target_seg_path):
                 tqdm.write(f"skiping {target_seg_path} already exists")
-                continue
             else:
                 tqdm.write("resampling seg...")
                 resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
