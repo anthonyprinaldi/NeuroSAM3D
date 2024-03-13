@@ -125,6 +125,9 @@ def main(args):
             if(not osp.exists(resample_img)):
                 tqdm.write("resampling...")
                 resample_nii(img, resample_img)
+            else:
+                tqdm.write(f"skiping {resample_img} already exists")
+            
             img = resample_img
 
             target_seg_class_dir = osp.join(
@@ -159,8 +162,9 @@ def main(args):
             if osp.exists(target_seg_path):
                 tqdm.write(f"skiping {target_seg_path} already exists")
                 continue
-            tqdm.write("resampling seg...")
-            resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
+            else:
+                tqdm.write("resampling seg...")
+                resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
             
             dataset_json.append({
                 "image": img,
