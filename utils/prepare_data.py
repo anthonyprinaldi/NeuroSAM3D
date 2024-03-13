@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import os.path as osp
@@ -70,7 +71,9 @@ def resample_nii(input_path: str, output_path: str, target_spacing: tuple = (1.5
     save_image.save(output_path)
 
 
-def main():
+def main(args):
+    dt = args.dataset_type
+
     for dataset in DATASET_LIST:
         dataset_dir = dataset.dir
         meta_info = json.load(open(osp.join(dataset_dir, "dataset.json")))
@@ -84,7 +87,17 @@ def main():
         # os.makedirs(resample_img_dir, exist_ok=True)
         # for idx, cls_name in meta_info["labels"].items():
         dataset_name = dataset.name
-        for item in tqdm(meta_info["training"], desc=f"{dataset_name}"):
+
+        # check if dataset is already done
+        target_save_dir = osp.join(TARGET_DIR, dataset_name)
+
+        data_list = meta_info[{
+            "Tr": "training",
+            "Val": "validation",
+            "Ts": "testing"
+        }[dt]]
+
+        for item in tqdm(data_list, desc=f"{dataset_name}"):
             
             img, seg, seg_idx = item["image"], item["seg"], int(item["seg_index"])
             if dataset_name == "TotalSegmentator":
@@ -101,16 +114,15 @@ def main():
             seg_parent_folder = Path(seg).parent.parts[-1]
             seg_ext = seg_parent_folder.split("_")[-1] if "_" in seg_parent_folder else ""
 
-            target_save_dir = osp.join(TARGET_DIR, dataset_name)
-            target_img_dir = osp.join(target_save_dir, "imagesTr" + (f"_{img_ext}" if img_ext else ""))
-            target_seg_dir = osp.join(target_save_dir, "labelsTr")
+            target_img_dir = osp.join(target_save_dir, f"images{dt}" + (f"_{img_ext}" if img_ext else ""))
+            target_seg_dir = osp.join(target_save_dir, f"labels{dt}")
             os.makedirs(target_img_dir, exist_ok=True)
             os.makedirs(target_seg_dir, exist_ok=True)
 
             resample_img = osp.join(target_img_dir, osp.basename(img))
             if(not osp.exists(resample_img)):
-                resample_nii(img, resample_img)
                 tqdm.write("resampling...")
+                resample_nii(img, resample_img)
             img = resample_img
 
             target_seg_class_dir = osp.join(
@@ -143,13 +155,25 @@ def main():
                 continue
 
             reference_image = tio.ScalarImage(img)
-            tqdm.write("resampling seg...")
             if osp.exists(target_seg_path):
                 tqdm.write(f"skiping {target_seg_path} already exists")
                 continue
+            tqdm.write("resampling seg...")
             resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
             # shutil.move(img, target_img_path)
 
+def parser():
+    parser = argparse.ArgumentParser(description="Prepare the medical data for training")
+    parser.add_argument(
+        "-dt",
+        "--dataset_type",
+        type=str,
+        default="Tr",
+        help="The dataset to prepare",
+        choices=["Tr", "Val", "Ts"],
+    )
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    main()
+    args = parser()
+    main(args)
