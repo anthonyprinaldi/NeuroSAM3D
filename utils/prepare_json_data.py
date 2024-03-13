@@ -1037,10 +1037,13 @@ class JSONJoiner:
     
     def _generate(self) -> List[dict]:
         dataset_json = []
+        total_data = 0
         for dataset_class in self.dataset_classes:
             res = dataset_class.generate()
             print(f"Generated {len(res)} items for {dataset_class.__name__}")
+            total_data += len(res)
             dataset_json.extend(res)
+        print(f"Total data items: {total_data}")
         return dataset_json
     
     def save_json(self, filename: str = 'dataset.json'):
