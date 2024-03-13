@@ -503,7 +503,11 @@ class LITSJSONGenerator(BaseDatasetJSONGenerator):
     
 class LUNAJSONGenerator(BaseDatasetJSONGenerator):
     dir = LUNA_16_DIR
-    num_seg_classes = 2
+    seg_class_values = [
+        3,
+        4,
+        5,
+    ]
     name = "LUNA"
     modality = ["CT"]
     labels = {
@@ -526,8 +530,8 @@ class LUNAJSONGenerator(BaseDatasetJSONGenerator):
                     {
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr' / (image.name)),
-                        "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / (image.name)).exists()
+                        "seg_index": x
+                    } for x in cls.seg_class_values if (work_dir / 'labelsTr' / (image.name)).exists()
                 ]
             )
 
