@@ -730,7 +730,11 @@ class CTORGJSONGenerator(BaseDatasetJSONGenerator):
 
 class UpennJSONGenerator(BaseDatasetJSONGenerator):
     dir = UPENN_DIR
-    num_seg_classes = 4
+    seg_class_values = [
+        1,
+        2,
+        4
+    ]
     name = "MRIGlioblastoma"
     modality = ["MRI"]
     labels = {
@@ -754,8 +758,8 @@ class UpennJSONGenerator(BaseDatasetJSONGenerator):
                     {
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr_auto' / (image.name)),
-                        "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr_auto' / (image.name)).exists()
+                        "seg_index": x
+                    } for x in cls.seg_class_values if (work_dir / 'labelsTr_auto' / (image.name)).exists()
                 ]
             )
             dataset_json.extend(
@@ -763,8 +767,8 @@ class UpennJSONGenerator(BaseDatasetJSONGenerator):
                     {
                         "image": str(image),
                         "seg": str(work_dir / 'labelsTr_seg' / (image.name)),
-                        "seg_index": x + 1
-                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr_seg' / (image.name)).exists()
+                        "seg_index": x
+                    } for x in cls.seg_class_values if (work_dir / 'labelsTr_seg' / (image.name)).exists()
                 ]
             )
 
