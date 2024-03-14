@@ -43,8 +43,8 @@ class Dataset_Union_ALL(Dataset):
             label = tio.LabelMap.from_sitk(sitk_label),
         )
 
-        if '/ct_' in self.image_paths[index]:
-            subject = tio.Clamp(-1000,1000)(subject)
+        # if '/ct_' in self.image_paths[index]: # TODO: what is this for?
+        #     subject = tio.Clamp(-1000,1000)(subject)
 
         if self.transform:
             try:
@@ -76,7 +76,7 @@ class Dataset_Union_ALL(Dataset):
         else:
             return subject.image.data.clone().detach(), subject.label.data.clone().detach(), self.image_paths[index]   
  
-    def _set_file_paths(self, paths):
+    def _set_file_paths(self, paths): # TODO: load from dataset_processed.json
         self.image_paths = []
         self.label_paths = []
 
