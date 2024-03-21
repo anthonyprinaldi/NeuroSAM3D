@@ -348,7 +348,6 @@ class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
         35:	"Torso fat",
         36:	"Psoas",
     }
-    # TODO: double check the images and seg masks line up
 
     @classmethod
     def generate(cls, alternate_dir: Optional[Path] = None):
@@ -370,10 +369,6 @@ class HealthyTotalBodyJSONGenerator(BaseDatasetJSONGenerator):
 
         cls.save_dataset_json(dataset_json)
         return dataset_json
-    
-    @staticmethod
-    def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
 
     
 class ISLESJSONGenerator(BaseDatasetJSONGenerator):
