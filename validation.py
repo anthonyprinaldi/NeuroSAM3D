@@ -19,12 +19,13 @@ from tqdm import tqdm
 from segment_anything import sam_model_registry
 from segment_anything.build_sam3D import sam_model_registry3D
 from segment_anything.utils.transforms3D import ResizeLongestSide3D
+from utils import training as TRAINING
+from utils import validation as VALIDATION
 from utils.click_method import (get_next_click3D_torch_2,
                                 get_next_click3D_torch_ritm)
 from utils.data_loader import Dataset_Union_ALL_Val
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-tdp', '--test_data_path', type=str, default='./data/validation')
 parser.add_argument('-vp', '--vis_path', type=str, default='./visualization')
 parser.add_argument('-cp', '--checkpoint_path', type=str, default='./ckpt/sam_med3d.pth')
 parser.add_argument('--save_name', type=str, default='union_out_dice.py')
@@ -287,9 +288,7 @@ def finetune_model_predict3D(img3D, gt3D, sam_model_tune, device='cuda', click_m
     return pred_list, click_points, click_labels, iou_list, dice_list
 
 if __name__ == "__main__":    
-    # all_dataset_paths = glob(join(args.test_data_path, "*", "*"))
-    all_dataset_paths = Path(args.test_data_path).glob("./*")
-    all_dataset_paths = list(filter(os.path.isdir, all_dataset_paths))
+    all_dataset_paths = VALIDATION
     print("get", len(all_dataset_paths), "datasets")
 
     infer_transform = [
