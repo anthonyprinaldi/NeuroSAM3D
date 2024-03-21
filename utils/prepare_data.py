@@ -24,12 +24,12 @@ DATASET_LIST = [
     LUNAJSONGenerator,
     MMWHSJSONGenerator,
     MSDJSONGenerator,
-    CTORGJSONGenerator,
+    CTORGJSONGenerator, # TODO: check why so many failed
     UpennJSONGenerator,
     ProstateJSONGenerator,
     SegTHORJSONGenerator,
     TCIAPancreasJSONGenerator,
-    TotalSegmentatorJSONGenerator,
+    TotalSegmentatorJSONGenerator, # TODO: check why so many failed
     ONDRIJSONGenerator,
     WORDJSONGenerator
 ]
@@ -92,6 +92,10 @@ def main(args):
             "Val": "validation",
             "Ts": "testing"
         }[dt]]
+
+        if data_list is None:
+            continue
+
 
         for item in tqdm(data_list, desc=f"{dataset_name}"):
             
