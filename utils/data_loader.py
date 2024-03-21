@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -76,24 +77,29 @@ class Dataset_Union_ALL(Dataset):
         else:
             return subject.image.data.clone().detach(), subject.label.data.clone().detach(), self.image_paths[index]   
  
-    def _set_file_paths(self, paths): # TODO: load from dataset_processed.json
+    def _set_file_paths(self, paths):
         self.image_paths = []
         self.label_paths = []
 
         # if ${path}/labelsTr exists, search all .nii.gz
         for path in paths:
-            label_dirs = Path(path).glob(f"labels{self.data_type}/*")
-            for label_dir in label_dirs:
-                if label_dir.is_dir():
-                    for file in label_dir.glob("*.nii*"):
-                        # label_path = path / label_dir / file.name
-                        # find all coresponding image files
-                        train_dirs = Path(path).glob(f"images{self.data_type}*")
-                        train_dirs = list(filter(lambda x: x.is_dir(), train_dirs))
-                        image_paths = [dir / file.name for dir in train_dirs]
-                        label_paths = [file] * len(image_paths)
-                        self.image_paths.extend(image_paths)
-                        self.label_paths.extend(label_paths)
+            with open(path, 'r') as f:
+                json_data = json.load(f)
+
+            self.image_paths.extend([x['image'] for x in json_data])
+            self.label_paths.extend([x['label'] for x in json_data])
+            # label_dirs = Path(path).glob(f"labels{self.data_type}/*")
+            # for label_dir in label_dirs:
+            #     if label_dir.is_dir():
+            #         for file in label_dir.glob("*.nii*"):
+            #             # label_path = path / label_dir / file.name
+            #             # find all coresponding image files
+            #             train_dirs = Path(path).glob(f"images{self.data_type}*")
+            #             train_dirs = list(filter(lambda x: x.is_dir(), train_dirs))
+            #             image_paths = [dir / file.name for dir in train_dirs]
+            #             label_paths = [file] * len(image_paths)
+            #             self.image_paths.extend(image_paths)
+            #             self.label_paths.extend(label_paths)
 
 class Dataset_Union_ALL_Val(Dataset_Union_ALL):
     def _set_file_paths(self, paths):
