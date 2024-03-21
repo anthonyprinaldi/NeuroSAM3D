@@ -74,6 +74,9 @@ def resample_nii(input_path: str, output_path: str, target_spacing: tuple = (1.5
 def main(args):
     dt = args.dataset_type
 
+    total_failed = 0
+    total_success = 0
+
     for dataset in DATASET_LIST:
         dataset_dir = dataset.dir
         dataset_json = []
@@ -160,6 +163,7 @@ def main(args):
             volume = seg_arr.sum()*spacing_voxel
             if(volume<10): # TODO: select this value
                 tqdm.write(f"skiping too small:\n{img=}, {seg=}, {cls_name=}")
+                total_failed += 1
                 continue
 
             reference_image = tio.ScalarImage(img)
@@ -169,6 +173,8 @@ def main(args):
                 tqdm.write("resampling seg...")
                 resample_nii(seg, target_seg_path, n=seg_idx, reference_image=reference_image, mode="nearest")
             
+            total_success += 1
+
             dataset_json.append({
                 "image": img,
                 "label": target_seg_path,
@@ -177,6 +183,8 @@ def main(args):
 
         with open(Path(TARGET_DIR) / f"{dataset_name}_{dt}.json", "w") as f:
             json.dump(dataset_json, f, indent=4)
+        
+    print(f"Total success: {total_success}\nTotal failed: {total_failed}")
 
 def parser():
     parser = argparse.ArgumentParser(description="Prepare the medical data for training")
