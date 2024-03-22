@@ -803,7 +803,20 @@ class ProstateJSONGenerator(BaseDatasetJSONGenerator):
                 ]
             )
 
-        cls.save_dataset_json(dataset_json)
+        imagesTs = cls.load_all_images(work_dir / "imagesTs")
+        test_json = []
+        for image in imagesTs:
+            test_json.extend(
+                [
+                    {
+                        "image": str(image),
+                        "seg": str(work_dir / 'labelsTs' / (image.name)),
+                        "seg_index": x + 1
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTs' / (image.name)).exists()
+                ]
+            )
+        
+        cls.save_dataset_json(dataset_json, test_json=test_json)
         return dataset_json
 
 
