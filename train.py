@@ -1,29 +1,32 @@
 # set up environment
-import numpy as np
-import random 
 import datetime
 import logging
-import matplotlib.pyplot as plt
 import os
+import random
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 join = os.path.join
-from tqdm import tqdm
-from torch.backends import cudnn
+import argparse
+from contextlib import nullcontext
+
 import torch
 import torch.distributed as dist
+import torch.multiprocessing as mp
 import torch.nn.functional as F
 import torchio as tio
-from torch.utils.data.distributed import DistributedSampler
-from segment_anything.build_sam3D import sam_model_registry3D
-import argparse
-from torch.cuda import amp
-import torch.multiprocessing as mp
-from torch.nn.parallel import DistributedDataParallel as DDP
 from monai.losses import DiceCELoss
-from contextlib import nullcontext
+from torch.backends import cudnn
+from torch.cuda import amp
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
+from tqdm import tqdm
+
+from segment_anything.build_sam3D import sam_model_registry3D
 from utils.click_method import get_next_click3D_torch_2
 from utils.data_loader import Dataset_Union_ALL, Union_Dataloader
 from utils.data_paths import img_datas
-
 
 # %% set up parser
 parser = argparse.ArgumentParser()
