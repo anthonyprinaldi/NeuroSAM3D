@@ -24,9 +24,10 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
 
 from segment_anything.build_sam3D import sam_model_registry3D
+from utils import training as TRAINING
+from utils import validation as VALIDATION
 from utils.click_method import get_next_click3D_torch_2
 from utils.data_loader import Dataset_Union_ALL, Union_Dataloader
-from utils.data_paths import img_datas
 
 # %% set up parser
 parser = argparse.ArgumentParser()
@@ -34,7 +35,7 @@ parser.add_argument("--task_name", type=str, default="union_train")
 parser.add_argument("--click_type", type=str, default="random")
 parser.add_argument("--multi_click", action="store_true", default=False)
 parser.add_argument("--model_type", type=str, default="vit_b_ori")
-parser.add_argument("--checkpoint", type=str, default="./work_dir/SAM/sam_vit_b.pth")
+parser.add_argument("--checkpoint", type=str, default="./work_dir/SAM/sam_vit_b.pth") # TODO: not being used rightn now
 parser.add_argument("--device", type=str, default="cuda")
 parser.add_argument("--work_dir", type=str, default="./work_dir")
 
@@ -78,7 +79,7 @@ def build_model(args):
 
 def get_dataloaders(args):
     train_dataset = Dataset_Union_ALL(
-        paths=img_datas,
+        paths=TRAINING,
         transform=tio.Compose(
             [
                 tio.ToCanonical(),
@@ -216,7 +217,7 @@ class BaseTrainer:
                 "best_loss": self.best_loss,
                 "best_dice": self.best_dice,
                 "args": self.args,
-                "used_datas": img_datas,
+                "used_datas": TRAINING,
             },
             join(MODEL_SAVE_PATH, f"sam_model_{describe}.pth"),
         )
@@ -464,7 +465,7 @@ class BaseTrainer:
             "====================================================================="
         )
         logger.info(f"args : {self.args}")
-        logger.info(f"Used datasets : {img_datas}")
+        logger.info(f"Used datasets : {TRAINING}")
         logger.info(
             "====================================================================="
         )
