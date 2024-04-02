@@ -404,7 +404,7 @@ class ISLESJSONGenerator(BaseDatasetJSONGenerator):
 
     @staticmethod
     def load_all_images(dir: Path, ext: str = '.nii.gz', contains: str = None):
-        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if contains is None or contains in Path(f).name])
+        return sorted([Path(f) for f in glob.glob(f'{str(dir)}*/*{ext}') if (contains is None or contains in Path(f).name) and not "FLAIR" in str(f)])
     
 class KitsJSONGenerator(BaseDatasetJSONGenerator):
     dir = KITS23_DIR
