@@ -50,7 +50,8 @@ class Dataset_Union_ALL(Dataset):
         if self.transform:
             try:
                 subject = self.transform(subject)
-            except:
+            except Exception as e:
+                print(traceback.format_exc())
                 print(self.image_paths[index])
 
         if(self.pcc):
