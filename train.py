@@ -171,7 +171,8 @@ class BaseTrainer:
             )
         elif self.args.lr_scheduler == "coswarm":
             self.lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                self.optimizer
+                self.optimizer,
+                T_0 = 10, # TODO: select value
             )
         else:
             self.lr_scheduler = torch.optim.lr_scheduler.LinearLR(self.optimizer, 0.1)
