@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import traceback
 
 import numpy as np
 import SimpleITK as sitk
@@ -76,7 +77,7 @@ class Dataset_Union_ALL(Dataset):
         if self.mode == "train" and self.data_type == 'Tr':
             return subject.image.data.clone().detach(), subject.label.data.clone().detach()
         else:
-            return subject.image.data.clone().detach(), subject.label.data.clone().detach(), self.image_paths[index]   
+            return subject.image.data.clone().detach(), subject.label.data.clone().detach(), self.image_paths[index]
  
     def _set_file_paths(self, paths):
         self.image_paths = []
