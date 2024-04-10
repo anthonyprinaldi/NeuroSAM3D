@@ -1091,4 +1091,3 @@ if __name__ == "__main__":
     joiner = JSONJoiner(*all_data_classes)
 
     joiner.save_json('dataset.json')
-    # joiner._generate()
