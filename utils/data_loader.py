@@ -167,27 +167,3 @@ class Test_Single(Dataset):
 
         self.image_paths.append(paths)
         self.label_paths.append(paths.replace('images', 'labels'))
-
-
-
-if __name__ == "__main__":
-    test_dataset = Dataset_Union_ALL(
-        paths=['/cpfs01/shared/gmai/medical_preprocessed/3d/iseg/ori_totalseg_two_class/liver/Totalsegmentator_dataset_ct/',], 
-        data_type='Ts', 
-        transform=tio.Compose([
-            tio.ToCanonical(),
-            tio.CropOrPad(mask_name='label', target_shape=(128,128,128)),
-        ]), 
-        threshold=0)
-
-    test_dataloader = Union_Dataloader(
-        dataset=test_dataset,
-        sampler=None,
-        batch_size=1, 
-        shuffle=True
-    )
-    for i,j,n in test_dataloader:
-        # print(i.shape)
-        # print(j.shape)
-        # print(n)
-        continue
