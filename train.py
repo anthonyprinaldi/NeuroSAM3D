@@ -27,7 +27,7 @@ from segment_anything.build_sam3D import sam_model_registry3D
 from utils import training as TRAINING
 from utils import validation as VALIDATION
 from utils.click_method import get_next_click3D_torch_2
-from utils.data_loader import Dataset_Union_ALL, Union_Dataloader
+from utils.data_loader import Dataset_Union_ALL, BackgroundDataLoader
 
 # %% set up parser
 parser = argparse.ArgumentParser()
@@ -100,7 +100,7 @@ def get_dataloaders(args):
         train_sampler = None
         shuffle = True
 
-    train_dataloader = Union_Dataloader(
+    train_dataloader = BackgroundDataloader(
         dataset=train_dataset,
         sampler=train_sampler,
         batch_size=args.batch_size,

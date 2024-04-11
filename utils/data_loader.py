@@ -113,7 +113,7 @@ class Dataset_Union_ALL_Val(Dataset_Union_ALL):
 
 
 
-class Union_Dataloader(DataLoader):
+class BackgroundDataLoader(DataLoader):
     def __iter__(self):
         return BackgroundGenerator(super().__iter__())
 
