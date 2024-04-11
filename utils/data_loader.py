@@ -90,18 +90,6 @@ class Dataset_Union_ALL(Dataset):
 
             self.image_paths.extend([x['image'] for x in json_data])
             self.label_paths.extend([x['label'] for x in json_data])
-            # label_dirs = Path(path).glob(f"labels{self.data_type}/*")
-            # for label_dir in label_dirs:
-            #     if label_dir.is_dir():
-            #         for file in label_dir.glob("*.nii*"):
-            #             # label_path = path / label_dir / file.name
-            #             # find all coresponding image files
-            #             train_dirs = Path(path).glob(f"images{self.data_type}*")
-            #             train_dirs = list(filter(lambda x: x.is_dir(), train_dirs))
-            #             image_paths = [dir / file.name for dir in train_dirs]
-            #             label_paths = [file] * len(image_paths)
-            #             self.image_paths.extend(image_paths)
-            #             self.label_paths.extend(label_paths)
 
 class DatasetValidation(Dataset_Union_ALL):
     def _set_file_paths(self, paths):
