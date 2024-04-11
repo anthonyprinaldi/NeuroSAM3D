@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 
 class DatasetMerged(Dataset): 
     def __init__(self, paths, mode='train', data_type='Tr', image_size=128, 
-                 transform=None, threshold=500,
+                 transform=None, threshold=10,
                  split_num=1, split_idx=0, pcc=False):
         self.paths = paths
         self.data_type = data_type
@@ -71,7 +71,8 @@ class DatasetMerged(Dataset):
                 subject = tio.CropOrPad(mask_name='crop_mask', 
                                         target_shape=(self.image_size,self.image_size,self.image_size))(subject)
 
-        if subject.label.data.sum() <= self.threshold:
+        if self.label_volumes[index] <= self.threshold:
+            print(f"Skipping subject {self.label_paths[index]} ...too small")
             return self.__getitem__(np.random.randint(self.__len__()))
         
         if self.mode == "train" and self.data_type == 'Tr':
