@@ -39,7 +39,7 @@ TARGET_DIR = "./data/medical_preprocessed"
 def resample_nii(
     input_path: str,
     output_path: str,
-    target_spacing: tuple,
+    target_spacing: tuple=None,
     n=None,
     reference_image=None,
     mode="linear",
@@ -55,6 +55,16 @@ def resample_nii(
 
     # Load the nii.gz file using torchio
     subject = tio.Subject(img=tio.ScalarImage(input_path))
+    # check if temporal dimension is lenght 1, otherwise select the first index
+    if(subject.img.shape[0]>1):
+        print(f"Subject has two channels: {subject.img.shape}, {input_path}")
+        subject.img.data = subject.img.data[0].unsqueeze(0)
+
+    if target_spacing is None:
+        save_image = subject.img
+        save_image.save(output_path)
+        return
+    
     resampler = tio.Compose(
         [
             tio.ToCanonical(),
@@ -149,8 +159,7 @@ def main(args):
             resample_img = osp.join(target_img_dir, osp.basename(img))
             if not osp.exists(resample_img):
                 tqdm.write("copying raw image...")
-                # resample_nii(img, resample_img)
-                shutil.copy(img, resample_img)
+                resample_nii(img, resample_img)
             else:
                 tqdm.write(f"skiping {resample_img} already exists")
 
