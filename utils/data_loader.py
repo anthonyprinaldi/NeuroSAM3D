@@ -103,7 +103,7 @@ class Dataset_Union_ALL(Dataset):
             #             self.image_paths.extend(image_paths)
             #             self.label_paths.extend(label_paths)
 
-class Dataset_Union_ALL_Val(Dataset_Union_ALL):
+class DatasetValidation(Dataset_Union_ALL):
     def _set_file_paths(self, paths):
         super()._set_file_paths(paths)
         

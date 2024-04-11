@@ -23,7 +23,7 @@ from utils import training as TRAINING
 from utils import validation as VALIDATION
 from utils.click_method import (get_next_click3D_torch_2,
                                 get_next_click3D_torch_ritm)
-from utils.data_loader import Dataset_Union_ALL_Val
+from utils.data_loader import DatasetValidation
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-vp', '--vis_path', type=str, default='./visualization')
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         tio.CropOrPad(mask_name='label', target_shape=(args.crop_size,args.crop_size,args.crop_size)),
     ]
 
-    test_dataset = Dataset_Union_ALL_Val(
+    test_dataset = DatasetValidation(
         paths=all_dataset_paths, 
         mode="Val", 
         data_type=args.data_type, 
