@@ -70,10 +70,6 @@ class DatasetMerged(Dataset):
                                     image_name="crop_mask")
                 subject = tio.CropOrPad(mask_name='crop_mask', 
                                         target_shape=(self.image_size,self.image_size,self.image_size))(subject)
-
-        if self.label_volumes[index] <= self.threshold:
-            print(f"Skipping subject {self.label_paths[index]} ...too small")
-            return self.__getitem__(np.random.randint(self.__len__()))
         
         if self.mode == "train" and self.data_type == 'Tr':
             return subject.image.data.clone().detach(), subject.label.data.clone().detach()
@@ -91,10 +87,21 @@ class DatasetMerged(Dataset):
             with open(path, 'r') as f:
                 json_data = json.load(f)
 
-            self.image_paths.extend([x['image'] for x in json_data])
-            self.label_paths.extend([x['label'] for x in json_data])
-            self.label_volumes.extend([x['volume'] for x in json_data])
-            self.image_spacing.extend([x['spacing'] for x in json_data])
+            self.image_paths.extend([x['image'] for x in json_data if x['volume'] > self.threshold])
+            self.label_paths.extend([x['label'] for x in json_data if x['volume'] > self.threshold])
+            self.label_volumes.extend([x['volume'] for x in json_data if x['volume'] > self.threshold])
+            self.image_spacing.extend([x['spacing'] for x in json_data if x['volume'] > self.threshold])
+
+    def get_filtered_json(self) -> typing.Dict:
+        return [
+            {
+                'image': self.image_paths[i],
+                'label': self.label_paths[i],
+                'volume': self.label_volumes[i],
+                'spacing': self.image_spacing[i]
+            }
+            for i in range(len(self.image_paths))
+        ]
 
 class DatasetValidation(DatasetMerged):
     def _set_file_paths(self, paths):
