@@ -11,7 +11,7 @@ from prefetch_generator import BackgroundGenerator
 from torch.utils.data import DataLoader, Dataset
 
 
-class Dataset_Union_ALL(Dataset): 
+class DatasetMerged(Dataset): 
     def __init__(self, paths, mode='train', data_type='Tr', image_size=128, 
                  transform=None, threshold=500,
                  split_num=1, split_idx=0, pcc=False):
@@ -91,7 +91,7 @@ class Dataset_Union_ALL(Dataset):
             self.image_paths.extend([x['image'] for x in json_data])
             self.label_paths.extend([x['label'] for x in json_data])
 
-class DatasetValidation(Dataset_Union_ALL):
+class DatasetValidation(DatasetMerged):
     def _set_file_paths(self, paths):
         super()._set_file_paths(paths)
         
