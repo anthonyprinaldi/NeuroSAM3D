@@ -82,6 +82,8 @@ class DatasetMerged(Dataset):
     def _set_file_paths(self, paths):
         self.image_paths = []
         self.label_paths = []
+        self.label_volumes = []
+        self.image_spacing = []
 
         # if ${path}/labelsTr exists, search all .nii.gz
         for path in paths:
@@ -90,6 +92,8 @@ class DatasetMerged(Dataset):
 
             self.image_paths.extend([x['image'] for x in json_data])
             self.label_paths.extend([x['label'] for x in json_data])
+            self.label_volumes.extend([x['volume'] for x in json_data])
+            self.image_spacing.extend([x['spacing'] for x in json_data])
 
 class DatasetValidation(DatasetMerged):
     def _set_file_paths(self, paths):
