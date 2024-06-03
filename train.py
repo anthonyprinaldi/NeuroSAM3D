@@ -100,7 +100,7 @@ def get_dataloaders(args):
         train_sampler = None
         shuffle = True
 
-    train_dataloader = BackgroundDataloader(
+    train_dataloader = BackgroundDataLoader(
         dataset=train_dataset,
         sampler=train_sampler,
         batch_size=args.batch_size,
