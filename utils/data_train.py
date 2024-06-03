@@ -1,4 +1,4 @@
-training = [
+training_list = [
     "data/medical_preprocessed/CTStroke_Tr.json",
     "data/medical_preprocessed/AMOS_Tr.json",
     "data/medical_preprocessed/CTOrgan_Tr.json",
@@ -21,3 +21,4 @@ training = [
     "data/medical_preprocessed/MRIGlioblastoma_Tr.json",
     "data/medical_preprocessed/HealthyTotalBody_Tr.json"
 ]
+training = "data/medical_processed/dataset_Tr.json"
