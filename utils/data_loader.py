@@ -8,6 +8,8 @@ import torch
 import torchio as tio
 from prefetch_generator import BackgroundGenerator
 from torch.utils.data import DataLoader, Dataset
+from monai.data import DataLoader as mDataLoader
+from pathlib import Path
 
 
 class DatasetMerged(Dataset):
@@ -22,18 +24,20 @@ class DatasetMerged(Dataset):
         split_num=1,
         split_idx=0,
         pcc=False,
+        dataset_max_size=None,
     ):
-        self.paths = paths
+        self.paths = [paths] if isinstance(paths, Path) else paths
         self.data_type = data_type
         self.split_num = split_num
         self.split_idx = split_idx
-
-        self._set_file_paths(self.paths)
+        self.dataset_max_size = dataset_max_size
         self.image_size = image_size
         self.transform = transform
         self.threshold = threshold
         self.mode = mode
         self.pcc = pcc
+
+        self._set_file_paths(self.paths, self.dataset_max_size)
 
     def __len__(self):
         return len(self.label_paths)
@@ -96,7 +100,7 @@ class DatasetMerged(Dataset):
                 self.image_paths[index],
             )
 
-    def _set_file_paths(self, paths):
+    def _set_file_paths(self, paths, max_size):
         self.image_paths = []
         self.label_paths = []
         self.label_volumes = []
@@ -106,6 +110,12 @@ class DatasetMerged(Dataset):
         for path in paths:
             with open(path, "r") as f:
                 json_data = json.load(f)
+
+            if max_size is not None:
+                import random
+                print(f"Limiting data to {max_size} samples")
+                random.shuffle(json_data)
+                json_data = json_data[:max_size]
 
             self.image_paths.extend(
                 [x["image"] for x in json_data if x["volume"] > self.threshold]
@@ -140,7 +150,7 @@ class DatasetValidation(DatasetMerged):
         self.label_paths = self.label_paths[self.split_idx :: self.split_num]
 
 
-class BackgroundDataLoader(DataLoader):
+class BackgroundDataLoader(mDataLoader):
     def __iter__(self):
         return BackgroundGenerator(super().__iter__())
 
