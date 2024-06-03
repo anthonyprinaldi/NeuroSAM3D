@@ -19,8 +19,8 @@ from tqdm import tqdm
 from segment_anything import sam_model_registry
 from segment_anything.build_sam3D import sam_model_registry3D
 from segment_anything.utils.transforms3D import ResizeLongestSide3D
-from utils import training as TRAINING
-from utils import validation as VALIDATION
+from utils import training_list as TRAINING
+from utils import validation_list as VALIDATION
 from utils.click_method import (get_next_click3D_torch_2,
                                 get_next_click3D_torch_ritm)
 from utils.data_loader import DatasetValidation
