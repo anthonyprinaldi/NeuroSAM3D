@@ -120,7 +120,7 @@ def _build_sam3D_ori(
     checkpoint=None,
 ):
     prompt_embed_dim = 384
-    image_size = 128
+    image_size = 112 # TODO: make variable
     vit_patch_size = 16
     image_embedding_size = image_size // vit_patch_size
     sam = Sam3D(

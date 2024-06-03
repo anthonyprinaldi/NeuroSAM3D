@@ -120,7 +120,6 @@ class ImageEncoderViT3D(nn.Module):
                 kernel_size=1,
                 bias=False,
             ),
-            # nn.LayerNorm(out_chans),
             LayerNorm3d(out_chans),
             nn.Conv3d(
                 out_chans,
@@ -130,7 +129,6 @@ class ImageEncoderViT3D(nn.Module):
                 bias=False,
             ),
             LayerNorm3d(out_chans),
-            # nn.LayerNorm(out_chans),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
