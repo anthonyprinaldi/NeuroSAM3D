@@ -3,8 +3,10 @@ import json
 import os
 import os.path as osp
 import shutil
+from pathlib import Path
 
 import nibabel as nib
+import numpy as np
 import torchio as tio
 from prepare_json_data import *
 from tqdm import tqdm
@@ -33,7 +35,7 @@ DATASET_LIST = [
     ONDRIJSONGenerator,
     WORDJSONGenerator,
 ]
-TARGET_DIR = "./data/medical_preprocessed"
+TARGET_DIR = "./data_fixed/medical_preprocessed"
 
 
 def resample_nii(
@@ -54,7 +56,16 @@ def resample_nii(
     """
 
     # Load the nii.gz file using torchio
-    subject = tio.Subject(img=tio.ScalarImage(input_path))
+    def nib_loader(path):
+        nib_img = nib.load(path)
+        return (nib_img.get_fdata().astype(np.float32), nib_img.affine)
+    
+    subject = tio.Subject(
+        img=tio.ScalarImage(
+            input_path,
+            reader=nib_loader,
+        )
+    )
     # check if temporal dimension is lenght 1, otherwise select the first index
     if(subject.img.shape[0]>1):
         print(f"Subject has two channels: {subject.img.shape}, {input_path}")
@@ -67,7 +78,7 @@ def resample_nii(
     
     resampler = tio.Compose(
         [
-            tio.ToCanonical(),
+            # tio.ToCanonical(),
             tio.Resample(target=target_spacing, image_interpolation=mode),
         ]
     )
@@ -212,7 +223,7 @@ def main(args):
                     "label": target_seg_path,
                     "class": cls_name,
                     "volume": volume,
-                    "spacing": spacing,
+                    "spacing": str(spacing),
                 }
             )
 
