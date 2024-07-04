@@ -30,7 +30,7 @@ from tqdm import tqdm
 from utils import training as TRAINING
 from utils import validation as VALIDATION
 from utils.click_method import get_next_click3D_torch_2
-from utils.data_loader import DatasetMerged, BackgroundDataLoader
+from utils.data_loader import BackgroundDataLoader, DatasetMerged
 
 join = os.path.join
 
@@ -52,7 +52,7 @@ parser.add_argument("--resume", action="store_true", default=False)
 
 # lr_scheduler
 parser.add_argument("--lr_scheduler", type=str, default="multisteplr")
-parser.add_argument("--step_size", type=list, default=[120, 180])
+parser.add_argument("--step_size", type=int, nargs="+", default=[120, 180])
 parser.add_argument("--gamma", type=float, default=0.1)
 parser.add_argument("--num_epochs", type=int, default=200)
 parser.add_argument("--img_size", type=int, default=112)
@@ -68,12 +68,13 @@ args = parser.parse_args()
 device = args.device
 os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in args.gpu_ids])
 logger = logging.getLogger(__name__)
-LOG_OUT_DIR = join(args.work_dir, args.task_name)
+LOG_OUT_DIR = Path(args.work_dir) / args.task_name
+LOG_OUT_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_SAVE_PATH = Path(args.work_dir) / args.task_name
+MODEL_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 click_methods = {
     "random": get_next_click3D_torch_2,
 }
-MODEL_SAVE_PATH = join(args.work_dir, args.task_name)
-os.makedirs(MODEL_SAVE_PATH, exist_ok=True)
 
 
 def build_model(args):
@@ -90,7 +91,7 @@ def get_dataloaders(args):
         paths=Path("data_fixed/medical_preprocessed/overall_Tr.json"),
         image_size=args.img_size,
         threshold=args.volume_threshold,
-        dataset_max_size=25,
+        # dataset_max_size=25,
     )
     train_transforms = monai.transforms.Compose(
         [
@@ -104,23 +105,23 @@ def get_dataloaders(args):
                 b_max=1,
                 clip=True
             ),
-            monai.transforms.OneOf([
-                monai.transforms.RandAffined(
-                    keys=["image", "label"],
-                    prob=0.6,
-                    shear_range=(0.1, 0.1, 0.1),
-                    mode=("bilinear", "nearest"),
-                    padding_mode="constant",
-                ),
-                monai.transforms.RandZoomd(
-                    keys=["image", "label"],
-                    prob=0.6,
-                    min_zoom=0.75,
-                    max_zoom=1.5,
-                    mode=("bilinear", "nearest"),
-                    padding_mode="constant",
-                ),
-            ]),
+            # monai.transforms.OneOf([
+            #     monai.transforms.RandAffined(
+            #         keys=["image", "label"],
+            #         prob=0.6,
+            #         shear_range=(0.1, 0.1, 0.1),
+            #         mode=("bilinear", "nearest"),
+            #         padding_mode="constant",
+            #     ),
+            #     monai.transforms.RandZoomd(
+            #         keys=["image", "label"],
+            #         prob=0.6,
+            #         min_zoom=0.75,
+            #         max_zoom=1.5,
+            #         mode=("bilinear", "nearest"),
+            #         padding_mode="constant",
+            #     ),
+            # ]),
             monai.transforms.Compose([
                 monai.transforms.RandFlipd(keys=["image", "label"], prob=0.3, spatial_axis=0),
                 monai.transforms.RandFlipd(keys=["image", "label"], prob=0.3, spatial_axis=1),
@@ -130,11 +131,11 @@ def get_dataloaders(args):
                 monai.transforms.RandRotate90d(keys=["image", "label"], prob=0.3, spatial_axes=(0, 2)),
             ]),
             monai.transforms.ToTensord(keys=["image", "label"]),
-            monai.transforms.OneOf([
-                monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.5, gamma=(0.5, 2.0)),
-                monai.transforms.RandGaussianNoised(keys=["image"], prob=0.5),
-                monai.transforms.RandGaussianSmoothd(keys=["image"], prob=0.5),
-            ]),
+            # monai.transforms.OneOf([
+            #     monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.5, gamma=(0.5, 2.0)),
+            #     monai.transforms.RandGaussianNoised(keys=["image"], prob=0.5),
+            #     monai.transforms.RandGaussianSmoothd(keys=["image"], prob=0.5),
+            # ]),
             monai.transforms.RandCropByLabelClassesd(
                 keys=["image", "label"],
                 label_key="label",
@@ -155,10 +156,11 @@ def get_dataloaders(args):
     all_data=dataset.get_filtered_json()
     print(f"All data len {len(all_data)}")
     cache_dir = Path(tempfile.mkdtemp()) / "persistent_cache"
-    train_dataset = monai.data.PersistentDataset(
+    # train_dataset = monai.data.PersistentDataset( # TODO: make persistent
+    train_dataset = monai.data.Dataset(
         data=all_data,
         transform=train_transforms,
-        cache_dir=cache_dir,
+        # cache_dir=cache_dir,
     )
 
     # train_dataset = monai.data.CacheDataset(
@@ -439,6 +441,8 @@ class BaseTrainer:
 
                 epoch_loss += loss.item()
 
+                epoch_dice += self.get_dice_score(prev_masks, gt3D)
+
                 cur_loss = loss.item()
 
                 loss /= self.args.accumulation_steps
@@ -473,6 +477,7 @@ class BaseTrainer:
                         self.step_best_loss = print_loss
 
         epoch_loss /= step
+        epoch_dice /= step
 
         return epoch_loss, epoch_iou, epoch_dice, pred_list
 
@@ -590,13 +595,6 @@ def main():
     mp.set_sharing_strategy("file_system")
     device_config(args)
 
-    # wandb.login()
-    wandb.init(
-        project="Neuro-SAM-3D",
-        config=args,
-        # settings=wandb.Settings(start_method="fork"),
-    )
-
     if args.multi_gpu:
         mp.spawn(main_worker, nprocs=args.world_size, args=(args,))
     else:
@@ -623,7 +621,7 @@ def main_worker(rank, args):
     args.device = torch.device(f"cuda:{rank}")
     args.rank = rank
 
-    init_seeds(2023 + rank)
+    init_seeds(2024 + rank)
 
     cur_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     logging.basicConfig(
@@ -637,6 +635,14 @@ def main_worker(rank, args):
     dataloaders = get_dataloaders(args)
     model = build_model(args)
     trainer = BaseTrainer(model, dataloaders, args)
+
+    if rank == 0:
+        wandb.init(
+            project="Neuro-SAM-3D",
+            config=args,
+            name=args.task_name,
+        )
+
     trainer.train()
     cleanup()
 
