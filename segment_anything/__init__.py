@@ -9,3 +9,4 @@ from .build_sam import (
 )
 from .predictor import SamPredictor
 from .automatic_mask_generator import SamAutomaticMaskGenerator
+from .modeling import BaseTrainer
