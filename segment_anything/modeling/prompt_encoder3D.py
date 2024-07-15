@@ -135,8 +135,6 @@ class PromptEncoder3D(nn.Module):
         else:
             return 1
 
-    def _get_device(self) -> torch.device:
-        return self.point_embeddings[0].weight.device
 
     def forward(
         self,
