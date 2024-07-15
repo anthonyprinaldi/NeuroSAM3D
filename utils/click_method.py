@@ -69,8 +69,8 @@ def get_next_click3D_torch_2(prev_seg, gt_semantic_seg):
         else:
             is_positive = False
 
-        bp = point[1:].clone().detach().reshape(1,1,3) 
-        bl = torch.tensor([int(is_positive),]).reshape(1,1)
+        bp = point[1:].clone().detach().reshape(1,1,3).to(prev_seg.device)
+        bl = torch.tensor([int(is_positive),]).reshape(1,1).to(prev_seg.device)
         batch_points.append(bp)
         batch_labels.append(bl)
 
@@ -101,8 +101,8 @@ def get_next_click3D_torch_largest_blob(prev_seg: torch.Tensor, gt_semantic_seg:
             continue
 
         point = largest_blob.centroid
-        bp = torch.tensor(point).reshape(1,1,3)
-        bl = torch.tensor([1,]).reshape(1,1)
+        bp = torch.tensor(point).reshape(1,1,3).to(prev_seg.device)
+        bl = torch.tensor([1,]).reshape(1,1).to(prev_seg.device)
         batch_points.append(bp)
         batch_labels.append(bl)
 
