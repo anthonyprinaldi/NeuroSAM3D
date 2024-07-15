@@ -79,8 +79,8 @@ class PromptEncoder3D(nn.Module):
         """Embeds point prompts."""
         points = points + 0.5  # Shift to center of pixel
         if pad:
-            padding_point = torch.zeros((points.shape[0], 1, 3), device=points.device)
-            padding_label = -torch.ones((labels.shape[0], 1), device=labels.device)
+            padding_point = torch.zeros((points.shape[0], 1, 3)).type_as(points)
+            padding_label = -torch.ones((labels.shape[0], 1)).type_as(labels)
             points = torch.cat([points, padding_point], dim=1)
             labels = torch.cat([labels, padding_label], dim=1)
         point_embedding = self.pe_layer.forward_with_coords(points, self.input_image_size)
@@ -147,15 +147,17 @@ class PromptEncoder3D(nn.Module):
             Bx(embed_dim)x(embed_H)x(embed_W)
         """
         bs = self._get_batch_size(points, boxes, masks)
-        sparse_embeddings = torch.empty((bs, 0, self.embed_dim), device=self._get_device())
+        sparse_embeddings = torch.empty((bs, 0, self.embed_dim))
         if points is not None:
             coords, labels = points
             point_embeddings = self._embed_points(coords, labels, pad=(boxes is None))
-            sparse_embeddings = torch.cat([sparse_embeddings, point_embeddings], dim=1)
+            device = coords.device
+            sparse_embeddings = torch.cat([sparse_embeddings.to(device), point_embeddings], dim=1)
         if boxes is not None:
             box_embeddings = self._embed_boxes(boxes)
-            sparse_embeddings = torch.cat([sparse_embeddings, box_embeddings], dim=1)
-
+            device = boxes.device
+            sparse_embeddings = torch.cat([sparse_embeddings.to(device), box_embeddings], dim=1)
+        
         if masks is not None:
             dense_embeddings = self._embed_masks(masks)
         else:
@@ -184,7 +186,8 @@ class PositionEmbeddingRandom3D(nn.Module):
         """Positionally encode points that are normalized to [0,1]."""
         # assuming coords are in [0, 1]^2 square and have d_1 x ... x d_n x 2 shape
         coords = 2 * coords - 1
-        coords = coords @ self.positional_encoding_gaussian_matrix
+        coords = coords.to(self.positional_encoding_gaussian_matrix.device) @ \
+            self.positional_encoding_gaussian_matrix
         coords = 2 * np.pi * coords
         # outputs d_1 x ... x d_n x C shape
         return torch.cat([torch.sin(coords), torch.cos(coords), torch.sin(coords)], dim=-1)
@@ -192,8 +195,7 @@ class PositionEmbeddingRandom3D(nn.Module):
     def forward(self, size: Tuple[int, int, int]) -> torch.Tensor:
         """Generate positional encoding for a grid of the specified size."""
         x, y, z = size
-        device: Any = self.positional_encoding_gaussian_matrix.device
-        grid = torch.ones((x, y, z), device=device, dtype=torch.float32)
+        grid = torch.ones((x, y, z), dtype=torch.float32)
         y_embed = grid.cumsum(dim=0) - 0.5
         x_embed = grid.cumsum(dim=1) - 0.5
         z_embed = grid.cumsum(dim=2) - 0.5
