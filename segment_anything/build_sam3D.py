@@ -10,46 +10,49 @@ from functools import partial
 
 from .modeling import ImageEncoderViT3D, MaskDecoder3D, PromptEncoder3D, Sam3D
 
-def build_sam3D_vit_h(checkpoint=None):
+def build_sam3D_vit_h(image_size, checkpoint=None):
     return _build_sam3D(
         encoder_embed_dim=1280,
         encoder_depth=32,
         encoder_num_heads=16,
         encoder_global_attn_indexes=[7, 15, 23, 31],
         checkpoint=checkpoint,
+        image_size=image_size,
     )
 
 
 build_sam3D = build_sam3D_vit_h
 
 
-def build_sam3D_vit_l(checkpoint=None):
+def build_sam3D_vit_l(image_size, checkpoint=None):
     return _build_sam3D(
         encoder_embed_dim=1024,
         encoder_depth=24,
         encoder_num_heads=16,
         encoder_global_attn_indexes=[5, 11, 17, 23],
         checkpoint=checkpoint,
+        image_size=image_size,
     )
 
 
-def build_sam3D_vit_b(checkpoint=None):
+def build_sam3D_vit_b(image_size, checkpoint=None):
     return _build_sam3D(
-        # encoder_embed_dim=768,
         encoder_embed_dim=384,
         encoder_depth=12,
         encoder_num_heads=12,
         encoder_global_attn_indexes=[2, 5, 8, 11],
         checkpoint=checkpoint,
+        image_size=image_size,
     )
 
-def build_sam3D_vit_b_ori(checkpoint=None):
+def build_sam3D_vit_b_ori(image_size, checkpoint=None):
     return _build_sam3D_ori(
         encoder_embed_dim=768,
         encoder_depth=12,
         encoder_num_heads=12,
         encoder_global_attn_indexes=[2, 5, 8, 11],
         checkpoint=checkpoint,
+        image_size=image_size,
     )
 
 
@@ -68,10 +71,11 @@ def _build_sam3D(
     encoder_depth,
     encoder_num_heads,
     encoder_global_attn_indexes,
+    image_size,
     checkpoint=None,
 ):
     prompt_embed_dim = 384
-    image_size = 256
+    # image_size = 112
     vit_patch_size = 16
     image_embedding_size = image_size // vit_patch_size
     sam = Sam3D(
@@ -117,10 +121,11 @@ def _build_sam3D_ori(
     encoder_depth,
     encoder_num_heads,
     encoder_global_attn_indexes,
+    image_size,
     checkpoint=None,
 ):
     prompt_embed_dim = 384
-    image_size = 112 # TODO: make variable
+    # image_size = 112
     vit_patch_size = 16
     image_embedding_size = image_size // vit_patch_size
     sam = Sam3D(
