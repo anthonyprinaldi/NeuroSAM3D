@@ -4,23 +4,14 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import torch
-from torch import nn
-from torch.nn import functional as F
-
+import math
 from typing import List, Tuple, Type
-# from .transformer import TwoWayTransformer
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
 
-import math
-from typing import Tuple, Type
+from .common3D import MLP, LayerNorm3d
 
 
 class MLPBlock3D(nn.Module):
@@ -265,22 +256,6 @@ class Attention(nn.Module):
         return out
 
 
-
-class LayerNorm3d(nn.Module):
-    def __init__(self, num_channels: int, eps: float = 1e-6) -> None:
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(num_channels))
-        self.bias = nn.Parameter(torch.zeros(num_channels))
-        self.eps = eps
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        u = x.mean(1, keepdim=True)
-        s = (x - u).pow(2).mean(1, keepdim=True)
-        x = (x - u) / torch.sqrt(s + self.eps)
-        x = self.weight[:, None, None, None] * x + self.bias[:, None, None, None]
-        return x
-
-
 class MaskDecoder3D(nn.Module):
     def __init__(
         self,
@@ -428,31 +403,3 @@ class MaskDecoder3D(nn.Module):
         iou_pred = self.iou_prediction_head(iou_token_out)
 
         return masks, iou_pred
-
-
-# Lightly adapted from
-# https://github.com/facebookresearch/MaskFormer/blob/main/mask_former/modeling/transformer/transformer_predictor.py # noqa
-class MLP(nn.Module):
-    def __init__(
-        self,
-        input_dim: int,
-        hidden_dim: int,
-        output_dim: int,
-        num_layers: int,
-        sigmoid_output: bool = False,
-    ) -> None:
-        super().__init__()
-        self.num_layers = num_layers
-        h = [hidden_dim] * (num_layers - 1)
-        self.layers = nn.ModuleList(
-            nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim])
-        )
-        self.sigmoid_output = sigmoid_output
-
-    def forward(self, x):
-        for i, layer in enumerate(self.layers):
-            x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
-        if self.sigmoid_output:
-            x = F.sigmoid(x)
-        return x
-
