@@ -99,29 +99,11 @@ def get_dataloaders(args):
                 b_max=1,
                 clip=True
             ),
-            monai.transforms.CropForegroundd( # TODO: do we need?
-                keys=["image", "label"],
-                source_key="image",
-                select_fn=lambda x: x > -1,
-
-            ),
-            # monai.transforms.OneOf([
-            #     monai.transforms.RandAffined(
-            #         keys=["image", "label"],
-            #         prob=0.6,
-            #         shear_range=(0.1, 0.1, 0.1),
-            #         mode=("bilinear", "nearest"),
-            #         padding_mode="constant",
-            #     ),
-            #     monai.transforms.RandZoomd(
-            #         keys=["image", "label"],
-            #         prob=0.6,
-            #         min_zoom=0.75,
-            #         max_zoom=1.5,
-            #         mode=("bilinear", "nearest"),
-            #         padding_mode="constant",
-            #     ),
-            # ]),
+            # monai.transforms.CropForegroundd( # TODO: do we need?
+            #     keys=["image", "label"],
+            #     source_key="image",
+            #     select_fn=lambda x: x > -1,
+            # ),
             monai.transforms.Compose([
                 monai.transforms.RandFlipd(keys=["image", "label"], prob=0.3, spatial_axis=0),
                 monai.transforms.RandFlipd(keys=["image", "label"], prob=0.3, spatial_axis=1),
@@ -131,22 +113,13 @@ def get_dataloaders(args):
                 monai.transforms.RandRotate90d(keys=["image", "label"], prob=0.3, spatial_axes=(0, 2)),
             ]),
             monai.transforms.ToTensord(keys=["image", "label"]),
-            # monai.transforms.OneOf([
-            #     monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.5, gamma=(0.5, 2.0)),
-            #     monai.transforms.RandGaussianNoised(keys=["image"], prob=0.5),
-            #     monai.transforms.RandGaussianSmoothd(keys=["image"], prob=0.5),
-            #     monai.transforms.RandHistogramShiftd(keys=["image"], prob=0.5, num_control_points=10),
-            #     monai.transforms.RandGaussianSharpend(keys=["image"], prob=0.5),
-            # ]),
-            # monai.transforms.RandCropByLabelClassesd(
-            #     keys=["image", "label"],
-            #     label_key="label",
-            #     spatial_size=[args.img_size, args.img_size, args.img_size],
-            #     ratios=[0, 1],
-            #     num_samples=1,
-            #     num_classes=2,
-            #     allow_smaller=True,
-            # ),
+            monai.transforms.OneOf([
+                monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.5, gamma=(0.5, 2.0)),
+                monai.transforms.RandGaussianNoised(keys=["image"], prob=0.5),
+                monai.transforms.RandGaussianSmoothd(keys=["image"], prob=0.5),
+                monai.transforms.RandHistogramShiftd(keys=["image"], prob=0.5, num_control_points=10),
+                monai.transforms.RandGaussianSharpend(keys=["image"], prob=0.5),
+            ]),
             monai.transforms.RandCropByPosNegLabeld(
                 keys=["image", "label"],
                 label_key="label",
@@ -164,6 +137,29 @@ def get_dataloaders(args):
             monai.transforms.EnsureTyped(keys=["image", "label"]),
         ]
     )
+
+    val_transforms = monai.transforms.Compose(
+        [
+            monai.transforms.LoadImaged(keys=["image", "label"], ensure_channel_first=True),
+            monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS"),
+            monai.transforms.ScaleIntensityRangePercentilesd(
+                keys=["image"],
+                lower=0.05,
+                upper=99.95,
+                b_min=-1,
+                b_max=1,
+                clip=True
+            ),
+            # monai.transforms.CropForegroundd( # TODO: do we need?
+            #     keys=["image", "label"],
+            #     source_key="image",
+            #     select_fn=lambda x: x > -1,
+            # ),
+            monai.transforms.ToTensord(keys=["image", "label"]),
+            monai.transforms.EnsureTyped(keys=["image", "label"]),
+        ]
+    )
+
     all_data=dataset.get_filtered_json()
     print(f"All data len {len(all_data)}")
     cache_dir = Path(tempfile.mkdtemp()) / "persistent_cache"
