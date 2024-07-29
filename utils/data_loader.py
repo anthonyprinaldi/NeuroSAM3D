@@ -7,7 +7,7 @@ import SimpleITK as sitk
 import torch
 import torchio as tio
 from prefetch_generator import BackgroundGenerator
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 from monai.data import DataLoader as mDataLoader
 from pathlib import Path
 
