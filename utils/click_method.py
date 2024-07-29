@@ -100,7 +100,11 @@ def get_next_click3D_torch_largest_blob(prev_seg: torch.Tensor, gt_semantic_seg:
             print("No blobs found")
             continue
 
-        point = largest_blob.centroid
+        img_label = largest_blob.label
+
+        possible_points = np.argwhere(blobs == img_label)
+        point = possible_points[np.random.randint(len(possible_points))]
+
         bp = torch.tensor(point).reshape(1,1,3).to(prev_seg.device)
         bl = torch.tensor([1,]).reshape(1,1).to(prev_seg.device)
         batch_points.append(bp)
