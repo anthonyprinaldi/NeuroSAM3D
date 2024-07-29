@@ -155,11 +155,11 @@ class BaseTrainer(L.LightningModule):
             start = torch.tensor([x.min(), y.min(), z.min()])
             end = torch.tensor([x.max(), y.max(), z.max()])
 
-            boxes_coords.append(torch.tensor([start, end]))
+            boxes_coords.append(torch.stack([start, end], dim=0))
 
-        boxes_coords = torch.cat(boxes_coords, dim=0)
+        boxes_coords = torch.stack(boxes_coords, dim=0)
 
-        return boxes_coords
+        return boxes_coords.to(gt3D.device)
 
 
     def interaction(self, sam_model, image_embedding, gt3D, num_clicks):
@@ -188,9 +188,13 @@ class BaseTrainer(L.LightningModule):
             
             points_input, labels_input = self.get_points(prev_masks, gt3D, num_click)
 
-            if num_click == random_insert or num_click == num_clicks - 1:
+            # make sure we are not flowing gradients through multiple clicks
+            points_input.detach()
+            labels_input.detach()
+
+            if num_click == random_insert or num_click == num_clicks - 1: # TODO: why on last iter?
                 low_res_masks, prev_masks = self.batch_forward(
-                    sam_model, image_embedding, gt3D, low_res_masks, points=None
+                    sam_model, image_embedding, gt3D, low_res_masks, points=None, boxes=None,
                 )
             else:
                 low_res_masks, prev_masks = self.batch_forward(
