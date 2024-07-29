@@ -42,7 +42,7 @@ class PromptEncoder3D(nn.Module):
         self.image_embedding_size = image_embedding_size
         self.pe_layer = PositionEmbeddingRandom3D(embed_dim // 3)
 
-        self.num_point_embeddings: int = 2  # pos/neg point
+        self.num_point_embeddings: int = 4  # pos/neg point and top left, top right
         point_embeddings = [nn.Embedding(1, embed_dim) for i in range(self.num_point_embeddings)]
         self.point_embeddings = nn.ModuleList(point_embeddings)
         self.not_a_point_embed = nn.Embedding(1, embed_dim)
