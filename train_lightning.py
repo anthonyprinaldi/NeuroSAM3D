@@ -1,41 +1,24 @@
 # set up environment
 import argparse
-import datetime
-import logging
 import os
-import random
 import tempfile
-from contextlib import nullcontext
 from pathlib import Path
 
 import lightning as L
-import matplotlib.pyplot as plt
 import monai.data
 import monai.transforms
 import monai.utils.misc
-import numpy as np
 import torch
-import torch.distributed as dist
-import torch.multiprocessing as mp
-import torch.nn.functional as F
-import torchio as tio
-import wandb
 from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.cli import LightningCLI
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.strategies import DDPStrategy
-from monai.data import DataLoader
-from monai.losses import DiceCELoss
 from segment_anything import BaseTrainer
 from segment_anything.build_sam3D import sam_model_registry3D
-from torch.backends import cudnn
-from torch.cuda import amp
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data.distributed import DistributedSampler
-from tqdm import tqdm
 from utils import training as TRAINING
 from utils import validation as VALIDATION
-from utils.click_method import get_next_click3D_torch_2
 from utils.data_loader import BackgroundDataLoader, DatasetMerged
+from utils.data_module import NeuroSAMDataModule
 
 join = os.path.join
 
@@ -200,7 +183,9 @@ def main():
     model = build_model(args)
     
     # Load datasets
-    dataloaders = get_dataloaders(args)
+    # dataloaders = get_dataloaders(args)
+
+    data_module = NeuroSAMDataModule(args)
     
 
     if args.checkpoint and not args.resume:
@@ -232,7 +217,6 @@ def main():
             log_model="all",
         )
     ]
-    # lightning_loggers[0].watch(lightning_module, log="all")
 
     strategy = DDPStrategy()
 
@@ -258,8 +242,7 @@ def main():
     # Train
     trainer.fit(
         model=lightning_module,
-        train_dataloaders=dataloaders,
-        val_dataloaders=None,
+        datamodule=data_module,
         ckpt_path=args.checkpoint if args.resume else None
     )
 
