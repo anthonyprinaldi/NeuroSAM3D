@@ -1,36 +1,62 @@
-from contextlib import nullcontext
-from logging import Logger
 from pathlib import Path
+from typing import List, Union
 
 import lightning as L
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.distributed as dist
+import torch.nn as nn
 import torch.nn.functional as F
 import torchio as tio
 from monai.losses import DiceCELoss
-from torch.cuda import amp
-from tqdm import tqdm
-
-import wandb
 from utils.click_method import (get_next_click3D_torch_2,
                                 get_next_click3D_torch_largest_blob)
 
+from .build_sam3D import sam_model_registry3D
+
 
 class BaseTrainer(L.LightningModule):
-    def __init__(self, model, args):
+    def __init__(self,
+                 model_type: str,
+                 work_dir: str,
+                 task_name: str,
+                 lr: float,
+                 weight_decay: float,
+                 lr_scheduler: str,
+                 step_size: Union[int, List[int]],
+                 gamma: float,
+                 largest_first: bool,
+                 click_type: str,
+                 multi_click: bool,
+                 img_size: int,
+                 bbox_first: bool,
+                 num_clicks: int,
+                 ):
         super().__init__()
 
-        self.model = model
-        self.args = args
-        self.best_loss = np.inf
-        self.best_dice = 0.0
-        self.step_best_loss = np.inf
-        self.step_best_dice = 0.0
-        self.losses = []
-        self.dices = []
-        self.ious = []
+        self.model_type = model_type
+        self.work_dir = work_dir
+        self.task_name = task_name
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.lr_scheduler = lr_scheduler
+        self.step_size = step_size
+        self.gamma = gamma
+        self.largest_first = largest_first
+        self.click_type = click_type
+        self.multi_click = multi_click
+        self.img_size = img_size
+        self.bbox_first = bbox_first
+        self.num_clicks = num_clicks
+
+        self.model = sam_model_registry3D[model_type](checkpoint=None, image_size=img_size)
+
+        # self.best_loss = np.inf
+        # self.best_dice = 0.0
+        # self.step_best_loss = np.inf
+        # self.step_best_dice = 0.0
+        # self.losses = []
+        # self.dices = []
+        # self.ious = []
         self.set_loss_fn()
         # self.set_optimizer()
         # self.set_lr_scheduler()
@@ -44,9 +70,9 @@ class BaseTrainer(L.LightningModule):
             "largest": get_next_click3D_torch_largest_blob,
         }
 
-        self.LOG_OUT_DIR: Path = Path(args.work_dir) / args.task_name
+        self.LOG_OUT_DIR: Path = Path(work_dir) / task_name
         self.LOG_OUT_DIR.mkdir(parents=True, exist_ok=True)
-        self.MODEL_SAVE_PATH: Path = Path(args.work_dir) / args.task_name
+        self.MODEL_SAVE_PATH: Path = Path(work_dir) / task_name
         self.MODEL_SAVE_PATH.mkdir(parents=True, exist_ok=True)
 
         self.save_hyperparameters(ignore=["model"])
@@ -59,27 +85,27 @@ class BaseTrainer(L.LightningModule):
                 },
                 {
                     "params": self.model.prompt_encoder.parameters(),
-                    "lr": self.args.lr * 0.1,
+                    "lr": self.lr * 0.1,
                 },
                 {
                     "params": self.model.mask_decoder.parameters(),
-                    "lr": self.args.lr * 0.1,
+                    "lr": self.lr * 0.1,
                 },
             ],
-            lr=self.args.lr,
+            lr=self.lr,
             betas=(0.9, 0.999),
-            weight_decay=self.args.weight_decay,
+            weight_decay=self.weight_decay,
         )
 
-        if self.args.lr_scheduler == "multisteplr":
+        if self.lr_scheduler == "multisteplr":
             lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-                optimizer, self.args.step_size, self.args.gamma
+                optimizer, self.step_size, self.gamma
             )
-        elif self.args.lr_scheduler == "steplr":
+        elif self.lr_scheduler == "steplr":
             lr_scheduler = torch.optim.lr_scheduler.StepLR(
-                optimizer, self.args.step_size[0], self.args.gamma
+                optimizer, self.step_size[0], self.gamma
             )
-        elif self.args.lr_scheduler == "coswarm":
+        elif self.lr_scheduler == "coswarm":
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
                 optimizer,
                 T_0 = 10,
@@ -120,12 +146,12 @@ class BaseTrainer(L.LightningModule):
         return low_res_masks, prev_masks
 
     def get_points(self, prev_masks, gt3D, num_click):
-        if num_click == 0 and self.args.largest_first:
+        if num_click == 0 and self.largest_first:
             batch_points, batch_labels = self.click_methods["largest"](
                 prev_masks, gt3D
             )
         else:
-            batch_points, batch_labels = self.click_methods[self.args.click_type](
+            batch_points, batch_labels = self.click_methods[self.click_type](
                 prev_masks, gt3D
             )
 
@@ -138,7 +164,7 @@ class BaseTrainer(L.LightningModule):
         points_multi = torch.cat(self.click_points, dim=1)
         labels_multi = torch.cat(self.click_labels, dim=1)
 
-        if self.args.multi_click:
+        if self.multi_click:
             points_input = points_multi
             labels_input = labels_multi
         else:
@@ -167,15 +193,15 @@ class BaseTrainer(L.LightningModule):
         prev_masks = torch.zeros_like(gt3D).to(self.device)
         low_res_masks = F.interpolate(
             prev_masks.float(),
-            size=(self.args.img_size // 4, self.args.img_size // 4, self.args.img_size // 4),
+            size=(self.img_size // 4, self.img_size // 4, self.img_size // 4),
         )
 
-        boxes = self.get_boxes(prev_masks, gt3D) if self.args.bbox_first else None
+        boxes = self.get_boxes(prev_masks, gt3D) if self.bbox_first else None
 
         random_insert = np.random.randint(2, 9)
         for num_click in range(num_clicks):
             
-            if num_click == 0 and self.args.bbox_first:
+            if num_click == 0 and self.bbox_first:
                 low_res_masks, prev_masks = self.batch_forward(
                     sam_model,
                     image_embedding,
@@ -244,7 +270,7 @@ class BaseTrainer(L.LightningModule):
         self.click_points = []
         self.click_labels = []
 
-        mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.args.num_clicks)
+        mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.num_clicks)
 
         dice = self.get_dice_score(mask_pred, gt)
 
@@ -258,7 +284,7 @@ class BaseTrainer(L.LightningModule):
 
             image_embedding = self.model.image_encoder(image.unsqueeze(dim=1))
 
-            mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.args.num_clicks)
+            mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.num_clicks)
 
             dice = self.get_dice_score(mask_pred, gt)
 
@@ -286,7 +312,7 @@ class BaseTrainer(L.LightningModule):
 
             image_embedding = self.model.image_encoder(image.unsqueeze(dim=1))
 
-            mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.args.num_clicks)
+            mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.num_clicks)
 
             dice = self.get_dice_score(mask_pred, gt)
 
