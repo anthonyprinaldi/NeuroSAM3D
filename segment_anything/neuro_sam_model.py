@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Tuple, Union
 
 import lightning as L
 import numpy as np
@@ -14,7 +14,7 @@ from utils.click_method import (get_next_click3D_torch_2,
 from .build_sam3D import sam_model_registry3D
 
 
-class BaseTrainer(L.LightningModule):
+class NeuroSamModel(L.LightningModule):
     def __init__(self,
                  model_type: str,
                  work_dir: str,
@@ -30,7 +30,44 @@ class BaseTrainer(L.LightningModule):
                  img_size: int,
                  bbox_first: bool,
                  num_clicks: int,
+                 logging_batches_idx: List[int],
+                 checkpoint: Optional[str] = None,
                  ):
+        """Initialize the trainer.
+
+        :param model_type: String used to select the model from the registry.
+        :type model_type: str
+        :param work_dir: Directory to save the model and logs.
+        :type work_dir: str
+        :param task_name: Name of the run.
+        :type task_name: str
+        :param lr: Learning rate for optimizer.
+        :type lr: float
+        :param weight_decay: Weight decay for optimizer.
+        :type weight_decay: float
+        :param lr_scheduler: Learning rate scheduler to use.
+        :type lr_scheduler: str
+        :param step_size: Step size of the scheduler.
+        :type step_size: Union[int, List[int]]
+        :param gamma: Gamma of the scheduler.
+        :type gamma: float
+        :param largest_first: Whether to select the largest blob as the first point prompt.
+        :type largest_first: bool
+        :param click_type: Click method to use.
+        :type click_type: str
+        :param multi_click: Whether to stack previous clicks for the current prompt.
+        :type multi_click: bool
+        :param img_size: Size of the input image.
+        :type img_size: int
+        :param bbox_first: Whether to use bounding boxes as the first prompt.
+        :type bbox_first: bool
+        :param num_clicks: Number of clicks to use per training sample.
+        :type num_clicks: int
+        :param logging_batches_idx: List of batch indices to log images for.
+        :type logging_batches_idx: List[int]
+        :param checkpoint: Path to the checkpoint to load weights from.
+        :type checkpoint: Optional[str]
+        """
         super().__init__()
 
         self.model_type = model_type
@@ -47,9 +84,12 @@ class BaseTrainer(L.LightningModule):
         self.img_size = img_size
         self.bbox_first = bbox_first
         self.num_clicks = num_clicks
+        self.logging_batches_idx = logging_batches_idx
 
         self.model = sam_model_registry3D[model_type](checkpoint=None, image_size=img_size)
 
+        if checkpoint is not None:
+            self = NeuroSamModel.load_from_checkpoint(checkpoint)
         # self.best_loss = np.inf
         # self.best_dice = 0.0
         # self.step_best_loss = np.inf
@@ -255,10 +295,10 @@ class BaseTrainer(L.LightningModule):
             dice_list.append(compute_dice(pred_masks[i], true_masks[i]))
         return (sum(dice_list) / len(dice_list)).item()
     
-    def prepare_batch(self, batch):
+    def prepare_batch(self, batch) -> Tuple[torch.Tensor, torch.Tensor]:
         return batch["image"], batch["label"]
     
-    def _step(self, batch, batch_idx):
+    def _step(self, batch, batch_idx, log_images=False, threshold=0.5):
         image, gt = self.prepare_batch(batch)
 
         image = self.norm_transform(image.squeeze(dim=1))  # (N, C, W, H, D)
@@ -274,31 +314,23 @@ class BaseTrainer(L.LightningModule):
 
         dice = self.get_dice_score(mask_pred, gt)
 
-        return loss, dice
-
-    
-    def training_step(self, batch, batch_idx):
-        if batch_idx in list(range(1,5)): # TODO: remove once we have val data
-            image, gt = self.prepare_batch(batch)
-            image = self.norm_transform(image.squeeze(dim=1))
-
-            image_embedding = self.model.image_encoder(image.unsqueeze(dim=1))
-
-            mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.num_clicks)
-
-            dice = self.get_dice_score(mask_pred, gt)
-
+        if log_images:
             self.logger.log_image(
                 key=f"sample data epoch-{self.current_epoch} batch-{batch_idx}",
                 images=[
                     image[0].cpu().detach().type(torch.float32).numpy()[:, image.shape[-2] // 2, :],
                     gt[0, 0, ...].cpu().detach().type(torch.float32).numpy()[:, gt.shape[-2] // 2, :],
-                    mask_pred[0, 0, ...].cpu().detach().type(torch.float32).numpy()[:, mask_pred.shape[-2] // 2, :] > 0.5,
+                    mask_pred[0, 0, ...].cpu().detach().type(torch.float32).numpy()[:, mask_pred.shape[-2] // 2, :] > threshold,
                 ],
                 caption=["val_image", "val_gt", "val_pred"],
             )
-        else:
-            loss, dice = self._step(batch, batch_idx)
+
+        return loss, dice
+
+    
+    def training_step(self, batch, batch_idx):
+
+        loss, dice = self._step(batch, batch_idx)
 
         self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
         self.log("train_dice", dice, on_step=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
@@ -306,23 +338,8 @@ class BaseTrainer(L.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        if batch_idx == 0:
-            image, gt = self.prepare_batch(batch)
-            image = self.norm_transform(image.squeeze(dim=1))
 
-            image_embedding = self.model.image_encoder(image.unsqueeze(dim=1))
-
-            mask_pred, loss = self.interaction(self.model, image_embedding, gt, num_clicks=self.num_clicks)
-
-            dice = self.get_dice_score(mask_pred, gt)
-
-            self.logger.log_image(
-                key=f"sample data epoch {self.current_epoch}",
-                images=[image[0], gt[0], mask_pred[0]],
-                caption=["val_image", "val_gt", "val_pred"],
-            )
-        else:
-            loss, dice = self._step(batch, batch_idx)
+        loss, dice = self._step(batch, batch_idx, log_images=(batch_idx in self.logging_batches_idx))
 
         self.log("val_loss", loss, prog_bar=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
         self.log("val_dice", dice, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
