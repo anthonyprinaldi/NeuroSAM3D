@@ -282,9 +282,7 @@ def cli_main():
             "parser_mode": "omegaconf",
             "fit": {
                 "default_config_files": [
-                    "configs/data.yaml",
-                    "configs/model.yaml",
-                    "configs/trainer.yaml",
+                    "configs/all.yaml",
                 ]
             }
         },
