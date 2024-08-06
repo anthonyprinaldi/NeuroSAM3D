@@ -17,7 +17,7 @@ from segment_anything import BaseTrainer
 from segment_anything.build_sam3D import sam_model_registry3D
 from utils import training as TRAINING
 from utils import validation as VALIDATION
-from utils.data_loader import BackgroundDataLoader, DatasetMerged
+from utils.data_loader import BackgroundDataLoader, DatasetJson
 from utils.data_module import NeuroSAMDataModule
 
 join = os.path.join

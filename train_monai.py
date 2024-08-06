@@ -30,7 +30,7 @@ from tqdm import tqdm
 from utils import training as TRAINING
 from utils import validation as VALIDATION
 from utils.click_method import get_next_click3D_torch_2
-from utils.data_loader import BackgroundDataLoader, DatasetMerged
+from utils.data_loader import BackgroundDataLoader, DatasetJson
 
 join = os.path.join
 
@@ -86,11 +86,11 @@ def build_model(args):
 
 def get_dataloaders(args):
 
-    dataset = DatasetMerged(
+    dataset = DatasetJson(
         # paths=TRAINING, # TODO: change
-        paths=Path("data_fixed/medical_preprocessed/overall_Tr.json"),
+        dataset_list=Path("data_fixed/medical_preprocessed/overall_Tr.json"),
         image_size=args.img_size,
-        threshold=args.volume_threshold,
+        volume_threshold=args.volume_threshold,
         # dataset_max_size=25,
     )
     train_transforms = monai.transforms.Compose(

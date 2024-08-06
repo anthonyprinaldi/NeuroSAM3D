@@ -27,7 +27,7 @@ from segment_anything.build_sam3D import sam_model_registry3D
 from utils import training as TRAINING
 from utils import validation as VALIDATION
 from utils.click_method import get_next_click3D_torch_2
-from utils.data_loader import DatasetMerged, BackgroundDataLoader
+from utils.data_loader import DatasetJson, BackgroundDataLoader
 
 # %% set up parser
 parser = argparse.ArgumentParser()
@@ -78,8 +78,8 @@ def build_model(args):
 
 
 def get_dataloaders(args):
-    train_dataset = DatasetMerged(
-        paths=TRAINING,
+    train_dataset = DatasetJson(
+        dataset_list=TRAINING,
         transform=tio.Compose(
             [
                 tio.ToCanonical(),
@@ -90,7 +90,7 @@ def get_dataloaders(args):
                 tio.RandomFlip(axes=(0, 1, 2)),
             ]
         ),
-        threshold=1000,
+        volume_threshold=1000,
     )
 
     if args.multi_gpu:
