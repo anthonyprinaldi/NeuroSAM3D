@@ -1,0 +1,38 @@
+trainer:
+  default_root_dir: TODO
+  accelerator: auto
+  devices: auto
+  accumulate_grad_batches: 120
+  check_val_every_n_epoch: 1
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: train_loss
+        verbose: true
+        dirpath: TODO
+        filename: 'best-loss-{epoch}-{train_loss:.4f}'
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: train_dice
+        verbose: true
+        mode: max
+        dirpath: TODO
+        filename: 'best-dice-{epoch}-{train_dice:.4f}'
+
+  max_epochs: 200
+  precision: bf16-mixed
+  num_nodes: 1
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      name: <TODO>
+      project: Neuro-SAM-3D
+      log_model: all
+
+  benchmark: true
+  enable_progress_bar: true
+  use_distributed_sampler: true
+  strategy: ddp_find_unused_parameters_true
+  log_every_n_steps: 1
