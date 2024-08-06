@@ -19,7 +19,7 @@ from utils import training as TRAINING
 from utils import validation as VALIDATION
 from utils.cli_utils import LoggerSaveConfigCallback, NeuroSAMCLI
 from utils.data_loader import BackgroundDataLoader, DatasetJson
-from utils.data_module import NeuroSAMDataModule
+from utils.data_module import NeuroSamDataModule
 
 join = os.path.join
 
@@ -191,7 +191,7 @@ def main():
     # Load datasets
     # dataloaders = get_dataloaders(args)
 
-    data_module = NeuroSAMDataModule(
+    data_module = NeuroSamDataModule(
         img_size=args.img_size,
         volume_threshold=args.volume_threshold,
         batch_size=args.batch_size,
@@ -275,7 +275,7 @@ def main():
 def cli_main():
     cli = NeuroSAMCLI(
         NeuroSamModel,
-        NeuroSAMDataModule,
+        NeuroSamDataModule,
         seed_everything_default=0,
         save_config_callback=LoggerSaveConfigCallback,
         parser_kwargs={

@@ -11,7 +11,7 @@ from .data_loader import BackgroundDataLoader, DatasetJson
 from .transforms import get_train_trainsforms, get_val_transforms
 
 
-class NeuroSAMDataModule(L.LightningDataModule):
+class NeuroSamDataModule(L.LightningDataModule):
 
     def __init__(self,
                  img_size: int,
