@@ -8,7 +8,7 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 import torchio as tio
-from prepare_json_data import *
+from utils.prepare_json_data import *
 from tqdm import tqdm
 
 DATASET_ROOT = "../data"
@@ -35,7 +35,7 @@ DATASET_LIST = [
     ONDRIJSONGenerator,
     WORDJSONGenerator,
 ]
-TARGET_DIR = "./data_fixed/medical_preprocessed"
+TARGET_DATASET_DIR = Path("./data_fixed/medical_preprocessed")
 
 
 def resample_nii(
@@ -122,7 +122,7 @@ def main(args):
 
         dataset_name = dataset.name
 
-        target_save_dir = osp.join(TARGET_DIR, dataset_name)
+        target_save_dir = osp.join(TARGET_DATASET_DIR, dataset_name)
 
         data_list = meta_info[
             {"Tr": "training", "Val": "validation", "Ts": "testing"}[dt]
@@ -227,13 +227,13 @@ def main(args):
                 }
             )
 
-        with open(Path(TARGET_DIR) / f"{dataset_name}_{dt}.json", "w") as f:
+        with open(Path(TARGET_DATASET_DIR) / f"{dataset_name}_{dt}.json", "w") as f:
             json.dump(dataset_json, f, indent=4)
 
         overall_data_dict.extend(dataset_json)
 
     print(f"Total success: {total_success}\nTotal failed: {total_failed}")
-    with open(Path(TARGET_DIR) / f"overall_{dt}.json", "w") as f:
+    with open(Path(TARGET_DATASET_DIR) / f"overall_{dt}.json", "w") as f:
         json.dump(overall_data_dict, f, indent=4)
 
 
