@@ -304,11 +304,14 @@ class MaskDecoder3D(nn.Module):
             LayerNorm3d(transformer_dim // 4),
             activation(),
             nn.ConvTranspose3d(transformer_dim // 4, transformer_dim // 8, kernel_size=2, stride=2),
+            LayerNorm3d(transformer_dim // 8),
+            activation(),
+            nn.ConvTranspose3d(transformer_dim // 8, transformer_dim // 8, kernel_size=2, stride=2),
             activation(),
         )
         self.output_hypernetworks_mlps = nn.ModuleList(
             [
-                MLP(transformer_dim, transformer_dim, transformer_dim // 8, 3)
+                MLP(transformer_dim, transformer_dim, transformer_dim // 8, 3) # TODO: dims
                 for i in range(self.num_mask_tokens)
             ]
         )

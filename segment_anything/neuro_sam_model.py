@@ -233,7 +233,7 @@ class NeuroSamModel(L.LightningModule):
         prev_masks = torch.zeros_like(gt3D).to(self.device)
         low_res_masks = F.interpolate(
             prev_masks.float(),
-            size=(self.img_size // 4, self.img_size // 4, self.img_size // 4),
+            size=(self.img_size // 2, self.img_size // 2, self.img_size // 2),
         )
 
         boxes = self.get_boxes(prev_masks, gt3D) if self.bbox_first else None
@@ -258,7 +258,7 @@ class NeuroSamModel(L.LightningModule):
             points_input.detach()
             labels_input.detach()
 
-            if num_click == random_insert or num_click == num_clicks - 1: # TODO: why on last iter?
+            if num_click == random_insert: # TODO: why on last iter?
                 low_res_masks, prev_masks = self.batch_forward(
                     sam_model, image_embedding, gt3D, low_res_masks, points=None, boxes=None,
                 )
