@@ -278,6 +278,10 @@ def cli_main():
         NeuroSamDataModule,
         seed_everything_default=0,
         save_config_callback=LoggerSaveConfigCallback,
+        save_config_kwargs={
+            "save_to_log_dir": True,
+            "overwrite": True,
+        },
         parser_kwargs={
             "parser_mode": "omegaconf",
             "fit": {

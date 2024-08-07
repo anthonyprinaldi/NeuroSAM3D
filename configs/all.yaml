@@ -88,6 +88,7 @@ trainer:
       name: ${model.task_name}
       project: Neuro-SAM-3D
       log_model: all
+      save_dir: ${model.work_dir}/${model.task_name}
 
   benchmark: true
   enable_progress_bar: true
