@@ -73,10 +73,10 @@ def get_val_transforms(img_size: int) -> monai.transforms.Compose:
             # ),
             monai.transforms.ToTensord(keys=["image", "label"]),
             # TODO: do we need this?
-            # monai.transforms.ResizeWithPadOrCropd(
-            #     keys=["image", "label"],
-            #     spatial_size=[args.img_size, args.img_size, args.img_size],
-            # ),
+            monai.transforms.ResizeWithPadOrCropd(
+                keys=["image", "label"],
+                spatial_size=[img_size, img_size, img_size],
+            ),
             monai.transforms.EnsureTyped(keys=["image", "label"]),
         ]
     )
