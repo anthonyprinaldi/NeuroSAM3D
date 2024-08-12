@@ -2,6 +2,7 @@ POSSIBLE_DATASETS = [
     "WORD_Val",
     "AMOS_Val",
     "ONDRI_Val",
+    "ProstateMRI_Ts",
     "CTStroke_Tr",
     "AMOS_Tr",
     "CTOrgan_Tr",
