@@ -1,14 +1,12 @@
-import argparse
 import json
 import os
 import os.path as osp
-import shutil
 from pathlib import Path
 
 import nibabel as nib
 import numpy as np
 import torchio as tio
-from utils.prepare_json_data import *
+from .prepare_json_data import *
 from tqdm import tqdm
 
 DATASET_ROOT = "../data"
@@ -235,23 +233,3 @@ def main(args):
     print(f"Total success: {total_success}\nTotal failed: {total_failed}")
     with open(Path(TARGET_DATASET_DIR) / f"overall_{dt}.json", "w") as f:
         json.dump(overall_data_dict, f, indent=4)
-
-
-def parser():
-    parser = argparse.ArgumentParser(
-        description="Prepare the medical data for training"
-    )
-    parser.add_argument(
-        "-dt",
-        "--dataset_type",
-        type=str,
-        default="Tr",
-        help="The dataset to prepare",
-        choices=["Tr", "Val", "Ts"],
-    )
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-    args = parser()
-    main(args)
