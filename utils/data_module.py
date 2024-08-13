@@ -75,7 +75,6 @@ class NeuroSamDataModule(L.LightningDataModule):
         if stage == "fit":
             train_json_fetcher = DatasetJson(
                 dataset_list=self.training_sets,
-                # dataset_list=Path("data_fixed/medical_preprocessed/overall_Tr.json"),
                 volume_threshold=self.volume_threshold,
             )
 
@@ -88,7 +87,7 @@ class NeuroSamDataModule(L.LightningDataModule):
 
             val_json_fetcher = DatasetJson(
                 dataset_list=self.validation_sets,
-                volume_threshold=self.volume_threshold, # TODO: do we want threshold on val
+                volume_threshold=self.volume_threshold,
             )
 
             val_data_paths = val_json_fetcher.get_filtered_json()
