@@ -66,13 +66,16 @@ def get_val_transforms(img_size: int) -> monai.transforms.Compose:
                 b_max=1,
                 clip=True
             ),
-            # monai.transforms.CropForegroundd( # TODO: do we need?
-            #     keys=["image", "label"],
-            #     source_key="image",
-            #     select_fn=lambda x: x > -1,
-            # ),
+            monai.transforms.RandCropByPosNegLabeld(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=[img_size, img_size, img_size],
+                pos=1,
+                neg=0,
+                num_samples=1,
+                allow_smaller=True,
+            ),
             monai.transforms.ToTensord(keys=["image", "label"]),
-            # TODO: do we need this?
             monai.transforms.ResizeWithPadOrCropd(
                 keys=["image", "label"],
                 spatial_size=[img_size, img_size, img_size],
