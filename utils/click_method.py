@@ -48,33 +48,41 @@ def get_next_click3D_torch_2(prev_seg, gt_semantic_seg):
 
     mask_threshold = 0.5
 
-    batch_points = []
-    batch_labels = []
-
     pred_masks = (prev_seg > mask_threshold)
     true_masks = (gt_semantic_seg > 0)
+
+    # get fp, fn and combine them
     fn_masks = torch.logical_and(true_masks, torch.logical_not(pred_masks))
     fp_masks = torch.logical_and(torch.logical_not(true_masks), pred_masks)
+    points_to_select = torch.logical_or(fn_masks, fp_masks)
 
-    to_point_mask = torch.logical_or(fn_masks, fp_masks)
+    # get the indices of the points
+    error_indices = torch.argwhere(points_to_select)
 
-    for i in range(gt_semantic_seg.shape[0]):
+    # shuffle the indices
+    error_indices = error_indices[torch.randperm(error_indices.shape[0])]
 
-        points = torch.argwhere(to_point_mask[i])
-        if len(points) == 0:
-            print("No points found")
-        point = points[np.random.randint(len(points))]
-        if fn_masks[i, 0, point[1], point[2], point[3]]:
-            is_positive = True
-        else:
-            is_positive = False
+    # get the batch indices of the points
+    batch_indices = error_indices[:, 0]
 
-        bp = point[1:].clone().detach().reshape(1,1,3).to(prev_seg.device)
-        bl = torch.tensor([int(is_positive),]).reshape(1,1).to(prev_seg.device)
-        batch_points.append(bp)
-        batch_labels.append(bl)
+    # get a unique point per batch
+    unique: torch.Tensor
+    inverse: torch.Tensor
+    unique, inverse = torch.unique(batch_indices, sorted=True, return_inverse=True)
+    perm = torch.arange(inverse.size(0), dtype=inverse.dtype, device=inverse.device)
+    # inverse, perm = inverse.flip([0]), perm.flip([0])
+    perm = inverse.new_empty((unique.size(0),)).scatter_(0, inverse, perm)
 
-    return batch_points, batch_labels # , (sum(dice_list)/len(dice_list)).item()    
+    batched_points = error_indices[perm]
+
+    # get the labels
+    batched_labels = fn_masks[tuple(batched_points.t())].int()
+    batched_labels = batched_labels.unsqueeze(1)
+
+    # convert to right shape
+    batched_points = batched_points[:, 2:].unsqueeze(1)
+
+    return batched_points, batched_labels
 
 
 def get_next_click3D_torch_largest_blob(prev_seg: torch.Tensor, gt_semantic_seg: torch.Tensor):

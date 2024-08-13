@@ -195,8 +195,8 @@ class NeuroSamModel(L.LightningModule):
                 prev_masks, gt3D
             )
 
-        points_co = torch.cat(batch_points, dim=0)
-        points_la = torch.cat(batch_labels, dim=0)
+        points_co = torch.cat(batch_points, dim=0) if isinstance(batch_points, list) else batch_points
+        points_la = torch.cat(batch_labels, dim=0) if isinstance(batch_labels, list) else batch_labels
 
         self.click_points.append(points_co)
         self.click_labels.append(points_la)
@@ -214,18 +214,23 @@ class NeuroSamModel(L.LightningModule):
     
 
     def get_boxes(self, prev_masks, gt3D):
-        boxes_coords = []
-        
-        for i in range(gt3D.shape[0]):
-            x, y, z = torch.nonzero(gt3D[i, 0] > 0, as_tuple=True)
-            start = torch.tensor([x.min(), y.min(), z.min()])
-            end = torch.tensor([x.max(), y.max(), z.max()])
+        h = torch.any(gt3D, dim=(3,4)).to(torch.int) # (B, C, H)
+        w = torch.any(gt3D, dim=(2,4)).to(torch.int) # (B, C, W)
+        d = torch.any(gt3D, dim=(2,3)).to(torch.int) # (B, C, D)
 
-            boxes_coords.append(torch.stack([start, end], dim=0))
+        min_height = torch.argmax(h, dim=-1) # (B, C)
+        min_width = torch.argmax(w, dim=-1) # (B, C)
+        min_depth = torch.argmax(d, dim=-1) # (B, C)
 
-        boxes_coords = torch.stack(boxes_coords, dim=0)
+        max_height = gt3D.shape[2] - torch.argmax(h.flip(dims=[-1]), dim=-1) - 1 # (B, C)
+        max_width = gt3D.shape[3] - torch.argmax(w.flip(dims=[-1]), dim=-1) - 1 # (B, C)
+        max_depth = gt3D.shape[4] - torch.argmax(d.flip(dims=[-1]), dim=-1) - 1 # (B, C)
 
-        return boxes_coords.to(gt3D.device)
+        mins = torch.cat([min_height, min_width, min_depth], axis=1) # (B, 3)
+        maxes = torch.cat([max_height, max_width, max_depth], axis=1) # (B, 3)
+        bounding_boxes = torch.stack([mins, maxes], axis=1) # (B, 2, 3)
+
+        return bounding_boxes.to(gt3D.device)
 
 
     def interaction(self, sam_model, image_embedding, gt3D, num_clicks):
