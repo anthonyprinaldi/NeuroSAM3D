@@ -15,8 +15,6 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.strategies import DDPStrategy
 from segment_anything import NeuroSamModel
 from segment_anything.build_sam3D import sam_model_registry3D
-from utils import training as TRAINING
-from utils import validation as VALIDATION
 from utils.cli_utils import LoggerSaveConfigCallback, NeuroSAMCLI
 from utils.data_loader import BackgroundDataLoader, DatasetJson
 from utils.data_module import NeuroSamDataModule
