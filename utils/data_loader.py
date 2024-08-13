@@ -33,6 +33,7 @@ class DatasetJson:
         self.label_paths = []
         self.label_volumes = []
         self.image_spacing = []
+        self.seg_class = []
 
         # if ${path}/labelsTr exists, search all .nii.gz
         for path in self.paths:
@@ -51,6 +52,9 @@ class DatasetJson:
             self.image_spacing.extend(
                 [x["spacing"] for x in json_data if x["volume"] > self.threshold]
             )
+            self.seg_class.extend(
+                [x["class"] for x in json_data if x["volume"] > self.threshold]
+            )
 
     def get_filtered_json(self) -> List[Dict[str, str | float]]:
         if self.dataset_max_size is not None:
@@ -65,12 +69,13 @@ class DatasetJson:
                 self.label_paths,
                 self.label_volumes,
                 self.image_spacing,
+                self.seg_class,
             )
         )
 
         random.shuffle(all_paths)
 
-        self.image_paths, self.label_paths, self.label_volumes, self.image_spacing = zip(
+        self.image_paths, self.label_paths, self.label_volumes, self.image_spacing, self.seg_class = zip(
             *all_paths
         )
 
@@ -80,6 +85,7 @@ class DatasetJson:
                 "label": self.label_paths[i],
                 "volume": self.label_volumes[i],
                 "spacing": self.image_spacing[i],
+                "class": self.seg_class[i],
             }
             for i in range(num_samples)
         ]
