@@ -192,7 +192,6 @@ def main(args):
             seg_arr = seg_img.get_fdata()
             seg_arr[seg_arr != seg_idx] = 0
             seg_arr[seg_arr != 0] = 1
-            volume = seg_arr.sum() * spacing_voxel
             # if(volume<10): # TODO: select this value later, don't skip for now
             #     tqdm.write(f"skiping too small:\n{img=}, {seg=}, {cls_name=}")
             #     total_failed += 1
@@ -212,6 +211,9 @@ def main(args):
                     reference_image=reference_image,
                     mode="nearest",
                 )
+            
+            new_seg_img = nib.load(target_seg_path)
+            volume = new_seg_img.get_fdata().sum() * np.prod(new_seg_img.header["pixdim"][1:4])
 
             total_success += 1
 
