@@ -4,7 +4,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -17,11 +17,13 @@ class ImageEncoder(nn.Module):
         trunk: nn.Module,
         neck: nn.Module,
         scalp: int = 0,
+        num_feature_levels: int = 1,
     ):
         super().__init__()
         self.trunk = trunk
         self.neck = neck
         self.scalp = scalp
+        self.num_feature_levels = num_feature_levels
         assert (
             self.trunk.channel_list == self.neck.backbone_channel_list
         ), f"Channel dims of trunk and neck do not match. Trunk: {self.trunk.channel_list}, neck: {self.neck.backbone_channel_list}"
@@ -39,7 +41,29 @@ class ImageEncoder(nn.Module):
             "vision_pos_enc": pos,
             "backbone_fpn": features,
         }
-        return output
+
+        # vision_feats = self._prepare_backbone_features(output)
+
+        return src
+    
+    def _prepare_backbone_features(
+            self,
+            backbone_output: Dict[str, torch.Tensor],
+        ) -> List[torch.Tensor]:
+        
+        backbone_output = backbone_output.copy()
+
+        assert len(backbone_output["backbone_fpn"]) == len(backbone_output["vision_pos_enc"])
+        assert len(backbone_output["backbone_fpn"]) >= self.num_feature_levels
+
+        feature_maps = backbone_output["backbone_fpn"][-self.num_feature_levels :]
+        # vision_pos_embeds = backbone_output["vision_pos_enc"][-self.num_feature_levels :]
+
+        vision_feats = [x.flatten(2).permute(2, 0, 1) for x in feature_maps]
+        # vision_pos_embeds = [x.flatten(2).permute(2, 0, 1) for x in vision_pos_embeds]
+
+        return vision_feats
+    
 
 
 class FpnNeck(nn.Module):
@@ -57,7 +81,7 @@ class FpnNeck(nn.Module):
         kernel_size: int = 1,
         stride: int = 1,
         padding: int = 0,
-        fpn_interp_model: str = "bilinear",
+        fpn_interp_model: str = "trilinear",
         fuse_type: str = "sum",
         fpn_top_down_levels: Optional[List[int]] = None,
     ):
@@ -75,7 +99,7 @@ class FpnNeck(nn.Module):
             current = nn.Sequential()
             current.add_module(
                 "conv",
-                nn.Conv2d(
+                nn.Conv3d(
                     in_channels=dim,
                     out_channels=d_model,
                     kernel_size=kernel_size,

@@ -18,11 +18,11 @@ from .utils import (MLP, DropPath, PatchEmbed, window_partition,
 def do_pool(x: torch.Tensor, pool: nn.Module, norm: nn.Module = None) -> torch.Tensor:
     if pool is None:
         return x
-    # (B, H, W, C) -> (B, C, H, W)
-    x = x.permute(0, 3, 1, 2)
+    # (B, H, W, D, C) -> (B, C, H, W, D)
+    x = x.permute(0, 4, 1, 2, 3)
     x = pool(x)
-    # (B, C, H', W') -> (B, H', W', C)
-    x = x.permute(0, 2, 3, 1)
+    # (B, C, H', W', D') -> (B, H', W', D', C)
+    x = x.permute(0, 2, 3, 4, 1)
     if norm:
         x = norm(x)
 
@@ -47,19 +47,19 @@ class MultiScaleAttention(nn.Module):
         self.proj = nn.Linear(dim_out, dim_out)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, H, W, _ = x.shape
-        # qkv with shape (B, H * W, 3, nHead, C)
-        qkv = self.qkv(x).reshape(B, H * W, 3, self.num_heads, -1)
-        # q, k, v with shape (B, H * W, nheads, C)
+        B, H, W, D, _ = x.shape
+        # qkv with shape (B, H * W * D, 3, nHead, C)
+        qkv = self.qkv(x).reshape(B, H * W * D, 3, self.num_heads, -1)
+        # q, k, v with shape (B, H * W * D, nheads, C)
         q, k, v = torch.unbind(qkv, 2)
 
         # Q pooling (for downsample at stage changes)
         if self.q_pool:
-            q = do_pool(q.reshape(B, H, W, -1), self.q_pool)
-            H, W = q.shape[1:3]  # downsampled shape
-            q = q.reshape(B, H * W, self.num_heads, -1)
+            q = do_pool(q.reshape(B, H, W, D, -1), self.q_pool)
+            H, W, D = q.shape[1:4]  # downsampled shape
+            q = q.reshape(B, H * W * D, self.num_heads, -1)
 
-        # Torch's SDPA expects [B, nheads, H*W, C] so we transpose
+        # Torch's SDPA expects [B, nheads, H*W*D, C] so we transpose
         x = F.scaled_dot_product_attention(
             q.transpose(1, 2),
             k.transpose(1, 2),
@@ -67,7 +67,7 @@ class MultiScaleAttention(nn.Module):
         )
         # Transpose back
         x = x.transpose(1, 2)
-        x = x.reshape(B, H, W, -1)
+        x = x.reshape(B, H, W, D, -1)
 
         x = self.proj(x)
 
@@ -83,7 +83,7 @@ class MultiScaleBlock(nn.Module):
         mlp_ratio: float = 4.0,
         drop_path: float = 0.0,
         norm_layer: Union[nn.Module, str] = "LayerNorm",
-        q_stride: Tuple[int, int] = None,
+        q_stride: Tuple[int, int, int] = None,
         act_layer: nn.Module = nn.GELU,
         window_size: int = 0,
     ):
@@ -100,7 +100,7 @@ class MultiScaleBlock(nn.Module):
 
         self.pool, self.q_stride = None, q_stride
         if self.q_stride:
-            self.pool = nn.MaxPool2d(
+            self.pool = nn.MaxPool3d(
                 kernel_size=q_stride, stride=q_stride, ceil_mode=False
             )
 
@@ -125,7 +125,7 @@ class MultiScaleBlock(nn.Module):
             self.proj = nn.Linear(dim, dim_out)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        shortcut = x  # B, H, W, C
+        shortcut = x  # B, H, W, D, C
         x = self.norm1(x)
 
         # Skip connection
@@ -135,23 +135,24 @@ class MultiScaleBlock(nn.Module):
         # Window partition
         window_size = self.window_size
         if window_size > 0:
-            H, W = x.shape[1], x.shape[2]
-            x, pad_hw = window_partition(x, window_size)
+            H, W, D = x.shape[1], x.shape[2], x.shape[3]
+            x, pad_hwd = window_partition(x, window_size)
 
         # Window Attention + Q Pooling (if stage change)
         x = self.attn(x)
         if self.q_stride:
             # Shapes have changed due to Q pooling
             window_size = self.window_size // self.q_stride[0]
-            H, W = shortcut.shape[1:3]
+            H, W, D = shortcut.shape[1:4]
 
             pad_h = (window_size - H % window_size) % window_size
             pad_w = (window_size - W % window_size) % window_size
-            pad_hw = (H + pad_h, W + pad_w)
+            pad_d = (window_size - D % window_size) % window_size
+            pad_hwd = (H + pad_h, W + pad_w, D + pad_d)
 
         # Reverse window partition
         if self.window_size > 0:
-            x = window_unpartition(x, window_size, pad_hw, (H, W))
+            x = window_unpartition(x, window_size, pad_hwd, (H, W, D))
 
         x = shortcut + self.drop_path(x)
         # MLP
@@ -170,11 +171,11 @@ class Hiera(nn.Module):
         num_heads: int = 1,  # initial number of heads
         drop_path_rate: float = 0.0,  # stochastic depth
         q_pool: int = 3,  # number of q_pool stages
-        q_stride: Tuple[int, int] = (2, 2),  # downsample stride bet. stages
+        q_stride: Tuple[int, int] = (2, 2, 2),  # downsample stride bet. stages
         stages: Tuple[int, ...] = (2, 3, 16, 3),  # blocks per stage
         dim_mul: float = 2.0,  # dim_mul factor at stage shift
         head_mul: float = 2.0,  # head_mul factor at stage shift
-        window_pos_embed_bkg_spatial_size: Tuple[int, int] = (14, 14),
+        window_pos_embed_bkg_spatial_size: Tuple[int, int] = (14, 14, 14),
         # window size per stage, when not using global att.
         window_spec: Tuple[int, ...] = (
             8,
@@ -214,7 +215,7 @@ class Hiera(nn.Module):
             torch.zeros(1, embed_dim, *self.window_pos_embed_bkg_spatial_size)
         )
         self.pos_embed_window = nn.Parameter(
-            torch.zeros(1, embed_dim, self.window_spec[0], self.window_spec[0])
+            torch.zeros(1, embed_dim, self.window_spec[0], self.window_spec[0], self.window_spec[0])
         )
 
         dpr = [
@@ -257,22 +258,22 @@ class Hiera(nn.Module):
             else [self.blocks[-1].dim_out]
         )
 
-    def _get_pos_embed(self, hw: Tuple[int, int]) -> torch.Tensor:
-        h, w = hw
+    def _get_pos_embed(self, hwd: Tuple[int, int, int]) -> torch.Tensor:
+        h, w, d = hwd
         window_embed = self.pos_embed_window
-        pos_embed = F.interpolate(self.pos_embed, size=(h, w), mode="bicubic")
+        pos_embed = F.interpolate(self.pos_embed, size=(h, w, d), mode="trilinear")
         pos_embed = pos_embed + window_embed.tile(
             [x // y for x, y in zip(pos_embed.shape, window_embed.shape)]
         )
-        pos_embed = pos_embed.permute(0, 2, 3, 1)
+        pos_embed = pos_embed.permute(0, 2, 3, 4, 1)
         return pos_embed
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.patch_embed(x)
-        # x: (B, H, W, C)
+        # x: (B, H, W, D, C)
 
         # Add pos embed
-        x = x + self._get_pos_embed(x.shape[1:3])
+        x = x + self._get_pos_embed(x.shape[1:4])
 
         outputs = []
         for i, blk in enumerate(self.blocks):
@@ -280,7 +281,7 @@ class Hiera(nn.Module):
             if (i == self.stage_ends[-1]) or (
                 i in self.stage_ends and self.return_interm_layers
             ):
-                feats = x.permute(0, 3, 1, 2)
+                feats = x.permute(0, 4, 1, 2, 3)
                 outputs.append(feats)
 
         return outputs

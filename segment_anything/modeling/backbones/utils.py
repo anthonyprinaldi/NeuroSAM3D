@@ -18,48 +18,59 @@ def window_partition(x, window_size):
     """
     Partition into non-overlapping windows with padding if needed.
     Args:
-        x (tensor): input tokens with [B, H, W, C].
+        x (tensor): input tokens with [B, H, W, D, C].
         window_size (int): window size.
     Returns:
-        windows: windows after partition with [B * num_windows, window_size, window_size, C].
-        (Hp, Wp): padded height and width before partition
+        windows: windows after partition with [B * num_windows, window_size, window_size, window_size, C].
+        (Hp, Wp, Dp): padded height and width before partition
     """
-    B, H, W, C = x.shape
+    B, H, W, D, C = x.shape
 
     pad_h = (window_size - H % window_size) % window_size
     pad_w = (window_size - W % window_size) % window_size
-    if pad_h > 0 or pad_w > 0:
-        x = F.pad(x, (0, 0, 0, pad_w, 0, pad_h))
-    Hp, Wp = H + pad_h, W + pad_w
+    pad_d = (window_size - D % window_size) % window_size
 
-    x = x.view(B, Hp // window_size, window_size, Wp // window_size, window_size, C)
-    windows = (
-        x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
+    if pad_h > 0 or pad_w > 0 or pad_d > 0:
+        x = F.pad(x, (0, 0, 0, pad_w, 0, pad_h, 0, pad_d))
+    Hp, Wp, Dp = H + pad_h, W + pad_w, D + pad_d
+
+    x = x.view(
+        B,
+        Hp // window_size,
+        window_size,
+        Wp // window_size,
+        window_size,
+        Dp // window_size,
+        window_size,
+        C
     )
-    return windows, (Hp, Wp)
+    windows = (
+        x.permute(0, 1, 3, 5, 2, 4, 6, 7).contiguous().view(-1, window_size, window_size, window_size, C)
+    )
+    return windows, (Hp, Wp, Dp)
 
 
-def window_unpartition(windows, window_size, pad_hw, hw):
+def window_unpartition(windows, window_size, pad_hwd, hwd):
     """
     Window unpartition into original sequences and removing padding.
     Args:
-        x (tensor): input tokens with [B * num_windows, window_size, window_size, C].
+        x (tensor): input tokens with [B * num_windows, window_size, window_size, window_size, sC].
         window_size (int): window size.
-        pad_hw (Tuple): padded height and width (Hp, Wp).
-        hw (Tuple): original height and width (H, W) before padding.
+        pad_hwd (Tuple): padded height and width (Hp, Wp, Dp).
+        hwd (Tuple): original height and width (H, W, D) before padding.
     Returns:
-        x: unpartitioned sequences with [B, H, W, C].
+        x: unpartitioned sequences with [B, H, W, D, C].
     """
-    Hp, Wp = pad_hw
-    H, W = hw
-    B = windows.shape[0] // (Hp * Wp // window_size // window_size)
+    Hp, Wp, Dp = pad_hwd
+    H, W, D = hwd
+    B = windows.shape[0] // (Hp * Wp * Dp // window_size // window_size // window_size)
     x = windows.view(
-        B, Hp // window_size, Wp // window_size, window_size, window_size, -1
+        B, Hp // window_size, Wp // window_size, Dp //window_size, window_size, window_size, window_size, -1
     )
-    x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, Hp, Wp, -1)
+    x = x.permute(0, 1, 3, 5, 2, 4, 6, 7).contiguous().view(B, Hp, Wp, Dp, -1)
 
-    if Hp > H or Wp > W:
-        x = x[:, :H, :W, :].contiguous()
+    if Hp > H or Wp > W or Dp > D:
+        x = x[:, :H, :W, :D, :].contiguous()
     return x
 
 
@@ -70,10 +81,10 @@ class PatchEmbed(nn.Module):
 
     def __init__(
         self,
-        kernel_size: Tuple[int, ...] = (7, 7),
-        stride: Tuple[int, ...] = (4, 4),
-        padding: Tuple[int, ...] = (3, 3),
-        in_chans: int = 3,
+        kernel_size: Tuple[int, ...] = (7, 7, 7),
+        stride: Tuple[int, ...] = (4, 4, 4),
+        padding: Tuple[int, ...] = (3, 3, 3),
+        in_chans: int = 1,
         embed_dim: int = 768,
     ):
         """
@@ -85,14 +96,14 @@ class PatchEmbed(nn.Module):
             embed_dim (int):  embed_dim (int): Patch embedding dimension.
         """
         super().__init__()
-        self.proj = nn.Conv2d(
+        self.proj = nn.Conv3d(
             in_chans, embed_dim, kernel_size=kernel_size, stride=stride, padding=padding
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.proj(x)
-        # B C H W -> B H W C
-        x = x.permute(0, 2, 3, 1)
+        # (B, C, H, W, D)-> (B, H, W, D, C)
+        x = x.permute(0, 2, 3, 4, 1)
         return x
 
 
@@ -207,36 +218,46 @@ class PositionEmbeddingSine(nn.Module):
 
     @torch.no_grad()
     def forward(self, x: torch.Tensor):
-        cache_key = (x.shape[-2], x.shape[-1])
+        cache_key = (x.shape[-3], x.shape[-2], x.shape[-1])
         if cache_key in self.cache:
-            return self.cache[cache_key][None].repeat(x.shape[0], 1, 1, 1)
+            return self.cache[cache_key][None].repeat(x.shape[0], 1, 1, 1, 1)
         y_embed = (
-            torch.arange(1, x.shape[-2] + 1, dtype=torch.float32, device=x.device)
-            .view(1, -1, 1)
-            .repeat(x.shape[0], 1, x.shape[-1])
+            torch.arange(1, x.shape[-3] + 1, dtype=torch.float32, device=x.device)
+            .view(1, -1, 1, 1)
+            .repeat(x.shape[0], 1, x.shape[-2], x.shape[-1])
         )
         x_embed = (
+            torch.arange(1, x.shape[-2] + 1, dtype=torch.float32, device=x.device)
+            .view(1, 1, -1, 1)
+            .repeat(x.shape[0], x.shape[-2], 1, x.shape[-1])
+        )
+        z_embed = (
             torch.arange(1, x.shape[-1] + 1, dtype=torch.float32, device=x.device)
-            .view(1, 1, -1)
-            .repeat(x.shape[0], x.shape[-2], 1)
+            .view(1, 1, 1, -1)
+            .repeat(x.shape[0], x.shape[-2], x.shape[-1], 1)
         )
 
         if self.normalize:
             eps = 1e-6
-            y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
-            x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
+            y_embed = y_embed / (y_embed[:, -1:, :, :] + eps) * self.scale
+            x_embed = x_embed / (x_embed[:, :, -1:, :] + eps) * self.scale
+            z_embed = z_embed / (z_embed[:, :, :, -1:] + eps) * self.scale
 
         dim_t = torch.arange(self.num_pos_feats, dtype=torch.float32, device=x.device)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
-        pos_x = x_embed[:, :, :, None] / dim_t
-        pos_y = y_embed[:, :, :, None] / dim_t
+        pos_x = x_embed[:, :, :, :, None] / dim_t
+        pos_y = y_embed[:, :, :, :, None] / dim_t
+        pos_z = z_embed[:, :, :, :, None] / dim_t
         pos_x = torch.stack(
-            (pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4
-        ).flatten(3)
+            (pos_x[:, :, :, :, 0::2].sin(), pos_x[:, :, :, :, 1::2].cos()), dim=5
+        ).flatten(4)
         pos_y = torch.stack(
-            (pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4
-        ).flatten(3)
-        pos = torch.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
+            (pos_y[:, :, :, :, 0::2].sin(), pos_y[:, :, :, :, 1::2].cos()), dim=5
+        ).flatten(4)
+        pos_z = torch.stack(
+            (pos_z[:, :, :, :, 0::2].sin(), pos_z[:, :, :, :, 1::2].cos()), dim=5
+        ).flatten(4)
+        pos = torch.cat((pos_z, pos_y, pos_x), dim=4).permute(0, 4, 1, 2, 3)
         self.cache[cache_key] = pos[0]
         return pos
