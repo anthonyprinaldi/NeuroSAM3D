@@ -4,7 +4,9 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import contextlib
 import math
+import warnings
 from typing import List, Tuple, Type
 
 import torch
@@ -12,6 +14,55 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 
 from .common3D import MLP, LayerNorm3d
+
+
+def get_sdpa_settings():
+    if torch.cuda.is_available():
+        old_gpu = torch.cuda.get_device_properties(0).major < 7
+        # only use Flash Attention on Ampere (8.0) or newer GPUs
+        use_flash_attn = torch.cuda.get_device_properties(0).major >= 8
+        if not use_flash_attn:
+            warnings.warn(
+                "Flash Attention is disabled as it requires a GPU with Ampere (8.0) CUDA capability.",
+                category=UserWarning,
+                stacklevel=2,
+            )
+        # keep math kernel for PyTorch versions before 2.2 (Flash Attention v2 is only
+        # available on PyTorch 2.2+, while Flash Attention v1 cannot handle all cases)
+        pytorch_version = tuple(int(v) for v in torch.__version__.split(".")[:2])
+        if pytorch_version < (2, 2):
+            warnings.warn(
+                f"You are using PyTorch {torch.__version__} without Flash Attention v2 support. "
+                "Consider upgrading to PyTorch 2.2+ for Flash Attention v2 (which could be faster).",
+                category=UserWarning,
+                stacklevel=2,
+            )
+        math_kernel_on = pytorch_version < (2, 2) or not use_flash_attn
+    else:
+        old_gpu = True
+        use_flash_attn = False
+        math_kernel_on = True
+
+    return old_gpu, use_flash_attn, math_kernel_on
+
+
+OLD_GPU, USE_FLASH_ATTN, MATH_KERNEL_ON = get_sdpa_settings()
+ALLOW_ALL_KERNELS = False
+
+def sdp_kernel_context(dropout_p):
+    """
+    Get the context for the attention scaled dot-product kernel. We use Flash Attention
+    by default, but fall back to all available kernels if Flash Attention fails.
+    """
+    if ALLOW_ALL_KERNELS:
+        return contextlib.nullcontext()
+
+    return torch.backends.cuda.sdp_kernel(
+        enable_flash=USE_FLASH_ATTN,
+        # if Flash attention kernel is off, then math kernel needs to be enabled
+        enable_math=(OLD_GPU and dropout_p > 0.0) or MATH_KERNEL_ON,
+        enable_mem_efficient=OLD_GPU,
+    )
 
 
 class MLPBlock3D(nn.Module):
@@ -38,6 +89,7 @@ class TwoWayTransformer3D(nn.Module):
         mlp_dim: int,
         activation: Type[nn.Module] = nn.ReLU,
         attention_downsample_rate: int = 2,
+        dropout: float = 0.0,
     ) -> None:
         """
         A transformer decoder that attends to an input image using
@@ -67,11 +119,12 @@ class TwoWayTransformer3D(nn.Module):
                     activation=activation,
                     attention_downsample_rate=attention_downsample_rate,
                     skip_first_layer_pe=(i == 0),
+                    dropout=dropout,
                 )
             )
 
         self.final_attn_token_to_image = Attention(
-            embedding_dim, num_heads, downsample_rate=attention_downsample_rate
+            embedding_dim, num_heads, downsample_rate=attention_downsample_rate, dropout=dropout,
         )
         self.norm_final_attn = nn.LayerNorm(embedding_dim)
 
@@ -131,6 +184,7 @@ class TwoWayAttentionBlock3D(nn.Module):
         activation: Type[nn.Module] = nn.ReLU,
         attention_downsample_rate: int = 2,
         skip_first_layer_pe: bool = False,
+        dropout: float = 0.0,
     ) -> None:
         """
         A transformer block with four layers: (1) self-attention of sparse
@@ -146,11 +200,11 @@ class TwoWayAttentionBlock3D(nn.Module):
           skip_first_layer_pe (bool): skip the PE on the first layer
         """
         super().__init__()
-        self.self_attn = Attention(embedding_dim, num_heads)
+        self.self_attn = Attention(embedding_dim, num_heads, dropout=dropout)
         self.norm1 = nn.LayerNorm(embedding_dim)
 
         self.cross_attn_token_to_image = Attention(
-            embedding_dim, num_heads, downsample_rate=attention_downsample_rate
+            embedding_dim, num_heads, downsample_rate=attention_downsample_rate, dropout=dropout,
         )
         self.norm2 = nn.LayerNorm(embedding_dim)
 
@@ -159,7 +213,7 @@ class TwoWayAttentionBlock3D(nn.Module):
 
         self.norm4 = nn.LayerNorm(embedding_dim)
         self.cross_attn_image_to_token = Attention(
-            embedding_dim, num_heads, downsample_rate=attention_downsample_rate
+            embedding_dim, num_heads, downsample_rate=attention_downsample_rate, dropout=dropout,
         )
 
         self.skip_first_layer_pe = skip_first_layer_pe
@@ -209,6 +263,7 @@ class Attention(nn.Module):
         embedding_dim: int,
         num_heads: int,
         downsample_rate: int = 1,
+        dropout: float = 0.0,
     ) -> None:
         super().__init__()
         self.embedding_dim = embedding_dim
@@ -220,6 +275,8 @@ class Attention(nn.Module):
         self.k_proj = nn.Linear(embedding_dim, self.internal_dim)
         self.v_proj = nn.Linear(embedding_dim, self.internal_dim)
         self.out_proj = nn.Linear(self.internal_dim, embedding_dim)
+
+        self.dropout_p = dropout
 
     def _separate_heads(self, x: Tensor, num_heads: int) -> Tensor:
         b, n, c = x.shape
@@ -242,14 +299,32 @@ class Attention(nn.Module):
         k = self._separate_heads(k, self.num_heads)
         v = self._separate_heads(v, self.num_heads)
 
-        # Attention
-        _, _, _, c_per_head = q.shape
-        attn = q @ k.permute(0, 1, 3, 2)  # B x N_heads x N_tokens x N_tokens
-        attn = attn / math.sqrt(c_per_head)
-        attn = torch.softmax(attn, dim=-1)
+        dropout_p = self.dropout_p if self.training else 0.0
+        # # Attention
+        # _, _, _, c_per_head = q.shape
+        # attn = q @ k.permute(0, 1, 3, 2)  # B x N_heads x N_tokens x N_tokens
+        # attn = attn / math.sqrt(c_per_head)
+        # attn = torch.softmax(attn, dim=-1)
 
-        # Get output
-        out = attn @ v
+        # # Get output
+        # out = attn @ v
+        # out = self._recombine_heads(out)
+        # out = self.out_proj(out)
+
+        try:
+            with sdp_kernel_context(dropout_p):
+                out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout_p)
+        except Exception as e:
+            warnings.warn(
+                f"Flash Attention kernel failed due to: {e}\nFalling back to all available "
+                f"kernels for scaled_dot_product_attention (which may have a slower speed).",
+                category=UserWarning,
+                stacklevel=2,
+            )
+            global ALLOW_ALL_KERNELS
+            ALLOW_ALL_KERNELS = True
+            out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout_p)
+
         out = self._recombine_heads(out)
         out = self.out_proj(out)
 
@@ -266,6 +341,7 @@ class MaskDecoder3D(nn.Module):
         activation: Type[nn.Module] = nn.GELU,
         iou_head_depth: int = 3,
         iou_head_hidden_dim: int = 256,
+        dropout: float = 0.0,
     ) -> None:
         """
         Predicts masks given an image and prompt embeddings, using a
@@ -291,6 +367,7 @@ class MaskDecoder3D(nn.Module):
                 embedding_dim=self.transformer_dim,
                 mlp_dim=2048,
                 num_heads=8,
+                dropout=dropout,
             )
 
         self.num_multimask_outputs = num_multimask_outputs
