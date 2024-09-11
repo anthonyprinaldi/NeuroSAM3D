@@ -92,7 +92,7 @@ class NeuroSamModel(L.LightningModule):
         self.model = sam_model_registry3D[model_type](checkpoint=None, image_size=img_size)
 
         if checkpoint is not None:
-            self = NeuroSamModel.load_from_checkpoint(checkpoint)
+            self.__dict__ = NeuroSamModel.load_from_checkpoint(checkpoint).__dict__
         # self.best_loss = np.inf
         # self.best_dice = 0.0
         # self.step_best_loss = np.inf
