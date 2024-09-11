@@ -78,6 +78,8 @@ class DatasetJson:
             *all_paths
         )
 
+        print(f"Returning {num_samples} samples")
+
         return [
             {
                 "image": self.image_paths[i],
