@@ -73,7 +73,6 @@ class DatasetJson:
             )
         )
 
-        random.shuffle(all_paths)
 
         self.image_paths, self.label_paths, self.label_volumes, self.image_spacing, self.seg_class = zip(
             *all_paths
