@@ -63,7 +63,7 @@ def build_sam3D_vit_hiera(image_size, checkpoint=None):
     return _build_sam3D_hiera(
         trunk_embed_dim=256,
         backbone_channel_list=[2048, 1024, 512, 256],
-        encoder_num_heads=12,
+        encoder_num_heads=8,
         encoder_global_attn_indexes=[7, 12, 16],
         checkpoint=checkpoint,
         image_size=image_size,
