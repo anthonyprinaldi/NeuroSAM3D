@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple, Union
 import lightning as L
 import numpy as np
 import torch
+import torch.cuda
 import torch.nn as nn
 import torch.nn.functional as F
 import torchio as tio
@@ -345,6 +346,8 @@ class NeuroSamModel(L.LightningModule):
         self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
         self.log("train_dice", dice, on_step=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
 
+        torch.cuda.empty_cache()
+
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -353,5 +356,7 @@ class NeuroSamModel(L.LightningModule):
 
         self.log("val_loss", loss, prog_bar=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
         self.log("val_dice", dice, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
+
+        torch.cuda.empty_cache()
 
         return loss
