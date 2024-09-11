@@ -8,6 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchio as tio
 from monai.losses import DiceCELoss
+from torch.optim.lr_scheduler import LRScheduler
+
 from utils.click_method import (get_next_click3D_torch_2,
                                 get_next_click3D_torch_largest_blob)
 
@@ -21,7 +23,7 @@ class NeuroSamModel(L.LightningModule):
                  task_name: str,
                  lr: float,
                  weight_decay: float,
-                 lr_scheduler: str,
+                 lr_scheduler: Union[str, LRScheduler],
                  step_size: Union[int, List[int]],
                  gamma: float,
                  largest_first: bool,
@@ -46,7 +48,7 @@ class NeuroSamModel(L.LightningModule):
         :param weight_decay: Weight decay for optimizer.
         :type weight_decay: float
         :param lr_scheduler: Learning rate scheduler to use.
-        :type lr_scheduler: str
+        :type lr_scheduler: Union[str, LRScheduler]
         :param step_size: Step size of the scheduler.
         :type step_size: Union[int, List[int]]
         :param gamma: Gamma of the scheduler.
@@ -137,7 +139,10 @@ class NeuroSamModel(L.LightningModule):
             weight_decay=self.weight_decay,
         )
 
-        if self.lr_scheduler == "multisteplr":
+        if isinstance(self.lr_scheduler, LRScheduler):
+            lr_scheduler = self.lr_scheduler
+
+        elif self.lr_scheduler == "multisteplr":
             lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
                 optimizer, self.step_size, self.gamma
             )
