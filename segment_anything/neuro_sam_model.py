@@ -244,7 +244,7 @@ class NeuroSamModel(L.LightningModule):
         prev_masks = torch.zeros_like(gt3D).to(self.device)
         low_res_masks = F.interpolate(
             prev_masks.float(),
-            size=(self.img_size // 2, self.img_size // 2, self.img_size // 2),
+            size=(self.img_size, self.img_size, self.img_size),
         )
 
         boxes = self.get_boxes(prev_masks, gt3D) if self.bbox_first else None

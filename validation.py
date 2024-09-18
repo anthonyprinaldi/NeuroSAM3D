@@ -243,7 +243,7 @@ def finetune_model_predict3D(img3D, gt3D, sam_model_tune, device='cuda', click_m
     dice_list = []
     if prev_masks is None:
         prev_masks = torch.zeros_like(gt3D).to(device)
-    low_res_masks = F.interpolate(prev_masks.float(), size=(args.crop_size//2,args.crop_size//2,args.crop_size//2))
+    low_res_masks = F.interpolate(prev_masks.float(), size=(args.crop_size,args.crop_size,args.crop_size))
 
     with torch.no_grad():
         image_embedding = sam_model_tune.image_encoder(img3D.to(device)) # (1, 384, 16, 16, 16)
