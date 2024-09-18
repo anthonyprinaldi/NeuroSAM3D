@@ -12,6 +12,7 @@ from typing import List, Tuple, Type
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
+from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from .common3D import MLP, LayerNorm3d
 
@@ -56,6 +57,16 @@ def sdp_kernel_context(dropout_p):
     """
     if ALLOW_ALL_KERNELS:
         return contextlib.nullcontext()
+    
+    backends = []
+    if USE_FLASH_ATTN:
+        backends.append(SDPBackend.FLASH_ATTENTION)
+    if (OLD_GPU and dropout_p > 0.0) or MATH_KERNEL_ON:
+        backends.append(SDPBackend.MATH)
+    if OLD_GPU:
+        backends.append(SDPBackend.EFFICIENT_ATTENTION)
+    
+    return sdpa_kernel(backends)
 
     return torch.backends.cuda.sdp_kernel(
         enable_flash=USE_FLASH_ATTN,
