@@ -55,6 +55,8 @@ model:
     - 4
     - 5
   checkpoint: null
+  model_cfg: /data3/dinov2_3d-cleanup/dinov2/configs/train/vit3d_highres
+  pretrained_weights: /data3/teacher_checkpoint.pth
 
 trainer:
   default_root_dir: ${model.work_dir}/${model.task_name}

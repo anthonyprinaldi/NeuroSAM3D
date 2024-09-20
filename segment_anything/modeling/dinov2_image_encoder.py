@@ -55,6 +55,60 @@ class NeuroSamModel(L.LightningModule):
         :param step_size: Step size of the scheduler.
         :type step_size: Union[int, List[int]]
         :param gamma: Gamma of the scheduler.
+from typing import List, Optional, Tuple, Union
+
+import lightning as L
+import numpy as np
+import torch
+import torch.cuda
+import torch.nn as nn
+import torch.nn.functional as F
+import torchio as tio
+from monai.losses import DiceCELoss
+from torch.optim.lr_scheduler import LRScheduler
+
+from utils.click_method import (get_next_click3D_torch_2,
+                                get_next_click3D_torch_largest_blob)
+
+from .build_sam3D import sam_model_registry3D
+
+
+class NeuroSamModel(L.LightningModule):
+    def __init__(self,
+                 model_type: str,
+                 work_dir: str,
+                 task_name: str,
+                 lr: float,
+                 weight_decay: float,
+                 lr_scheduler: Union[str, LRScheduler],
+                 step_size: Union[int, List[int]],
+                 gamma: float,
+                 largest_first: bool,
+                 click_type: str,
+                 multi_click: bool,
+                 img_size: int,
+                 bbox_first: bool,
+                 num_clicks: int,
+                 logging_batches_idx: List[int],
+                 checkpoint: Optional[str] = None,
+                 ):
+        """Initialize the trainer.
+
+        :param model_type: String used to select the model from the registry.
+        :type model_type: str
+        :param work_dir: Directory to save the model and logs.
+        :type work_dir: str
+        :param task_name: Name of the run.
+        :type task_name: str
+        :param lr: Learning rate for optimizer.
+        :type lr: float
+        :param weight_decay: Weight decay for optimizer.
+        :type weight_decay: float
+        :param lr_scheduler: Learning rate scheduler to use.
+        :type lr_scheduler: Union[str, LRScheduler]
+        :param step_size: Step size of the scheduler.
+        :type step_size: Union[int, List[int]]
+        :param gamma: Gamma of the scheduler.
         :type gamma: float
         :param largest_first: Whether to select the largest blob as the first point prompt.
         :type largest_first: bool
@@ -72,10 +126,6 @@ class NeuroSamModel(L.LightningModule):
         :type logging_batches_idx: List[int]
         :param checkpoint: Path to the checkpoint to load weights from.
         :type checkpoint: Optional[str]
-        :param model_cfg: Path to the model configuration file. Only used for Dinov2.
-        :type model_cfg: Optional[str]
-        :param pretrained_weights: Path to the pretrained weights. Only used for Dinov2.
-        :type pretrained_weights: Optional[str]
         """
         super().__init__()
 
@@ -95,13 +145,7 @@ class NeuroSamModel(L.LightningModule):
         self.num_clicks = num_clicks
         self.logging_batches_idx = logging_batches_idx
 
-        self.model = sam_model_registry3D[model_type](
-            checkpoint=None,
-            image_size=img_size,
-            model_cfg=model_cfg,
-            pretrained_weights=pretrained_weights,
-        )
-        self.model = self.model.to(self.device)
+        self.model = sam_model_registry3D[model_type](checkpoint=None, image_size=img_size)
 
         if checkpoint is not None:
             self.__dict__ = NeuroSamModel.load_from_checkpoint(checkpoint).__dict__
