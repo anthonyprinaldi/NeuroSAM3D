@@ -5,12 +5,11 @@ data:
   volume_threshold: 100
   cache_dir: null
   training_sets:
-    - CTStroke_Tr
+    # - CTStroke_Tr
     - AMOS_Tr
     - CTOrgan_Tr
-    - BRATS_Tr
     - AbdomenCT_Tr
-    - ISLES_Tr
+    # - ISLES_Tr
     - WORD_Tr
     - StanfordKnee_Tr
     - PancreasCt_Tr
@@ -27,9 +26,11 @@ data:
     - MRIGlioblastoma_Tr
     - HealthyTotalBody_Tr
   validation_sets:
+    - BRATS_Tr
     - WORD_Val
     - AMOS_Val
     - ONDRI_Val
+    - ProstateMRI_Ts
 
 
 model:
@@ -97,3 +98,4 @@ trainer:
   use_distributed_sampler: true
   strategy: ddp_find_unused_parameters_true
   log_every_n_steps: 1
+  val_check_interval: 0.2
