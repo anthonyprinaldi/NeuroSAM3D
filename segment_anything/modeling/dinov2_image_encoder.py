@@ -42,14 +42,14 @@ class DinoV2ImageEncoder(nn.Module):
 
     def forward(self, x):
         x = self.model(x, is_training=True)["x_norm_patchtokens"]
-        x = self.neck(x) # B HWD C
-        x = x.transpose(1,2) # B C HWD
+        x = x.transpose(1,2).contiguous() # B C HWD
         x = x.reshape(
             x.shape[0],
-            self.desired_out_channel,
+            self.DINO_EMBED_DIM,
             self.desired_out_spatial,
             self.desired_out_spatial,
             self.desired_out_spatial,
-        )
+        ) # B C H W D
+        x = self.neck(x) # B C_new H W D
         
         return x
