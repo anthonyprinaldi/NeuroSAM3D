@@ -62,7 +62,7 @@ trainer:
   default_root_dir: ${model.work_dir}/${model.task_name}
   accelerator: auto
   devices: auto
-  accumulate_grad_batches: 120
+  accumulate_grad_batches: 2 # TODO
   check_val_every_n_epoch: 1
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
