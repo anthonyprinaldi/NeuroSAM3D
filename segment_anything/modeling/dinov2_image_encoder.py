@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('/data3/dinov2_3d-cleanup')
+sys.path.append('/home/arinaldi/project/aiconsgrp/dinov2_3d-cleanup')
 from pathlib import Path
 from typing import Union
 
