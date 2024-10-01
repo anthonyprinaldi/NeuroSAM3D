@@ -355,8 +355,8 @@ class NeuroSamModel(L.LightningModule):
 
         loss, dice = self._step(batch, batch_idx)
 
-        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
-        self.log("train_dice", dice, on_step=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
+        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=batch[0].shape[0], sync_dist=True)
+        self.log("train_dice", dice, on_step=True, on_epoch=True, batch_size=batch[0].shape[0], sync_dist=True)
 
         torch.cuda.empty_cache()
 
@@ -366,8 +366,8 @@ class NeuroSamModel(L.LightningModule):
 
         loss, dice = self._step(batch, batch_idx, log_images=(batch_idx in self.logging_batches_idx))
 
-        self.log("val_loss", loss, prog_bar=True, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
-        self.log("val_dice", dice, on_epoch=True, batch_size=batch["image"].shape[0], sync_dist=True)
+        self.log("val_loss", loss, prog_bar=True, on_epoch=True, batch_size=batch[0].shape[0], sync_dist=True)
+        self.log("val_dice", dice, on_epoch=True, batch_size=batch[0].shape[0], sync_dist=True)
 
         torch.cuda.empty_cache()
 
