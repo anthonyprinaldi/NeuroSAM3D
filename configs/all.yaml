@@ -34,7 +34,7 @@ data:
 model:
   model_type: vit_l
   work_dir: ./work_dir
-  task_name: debug
+  task_name: train-neurosam-scratch
   lr: 8e-04
   weight_decay: 0.1
   lr_scheduler: multisteplr
