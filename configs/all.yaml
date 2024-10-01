@@ -1,8 +1,9 @@
 data:
   img_size: 112
-  batch_size: 2
-  num_workers: 16
-  volume_threshold: 10
+  batch_size: 4
+  num_workers: 8
+  volume_threshold: 100
+  cache_dir: null
   training_sets:
     - CTStroke_Tr
     - AMOS_Tr
@@ -35,14 +36,12 @@ model:
   model_type: vit_l
   work_dir: ./work_dir
   task_name: train-neurosam-scratch
-  lr: 8e-04
-  weight_decay: 0.1
-  lr_scheduler: multisteplr
+  lr: 1e-03
+  weight_decay: 0.005
+  lr_scheduler: steplr
   step_size: 
-    - 120
-    - 160
-    - 190
-  gamma: 0.1
+    - 100
+  gamma: 0.9
   largest_first: true
   click_type: random
   multi_click: true
