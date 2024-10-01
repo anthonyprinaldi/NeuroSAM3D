@@ -322,7 +322,7 @@ class NeuroSamModel(L.LightningModule):
         return batch["image"], batch["label"]
     
     def _step(self, batch, batch_idx, log_images=False, threshold=0.5):
-        image, gt = self.prepare_batch(batch)
+        image, gt = batch
 
         image = self.norm_transform(image.squeeze(dim=1))  # (N, C, W, H, D)
         image = image.unsqueeze(dim=1)
