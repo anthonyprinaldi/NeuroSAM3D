@@ -1,9 +1,5 @@
 import json
-import random
 from typing import Dict, List, Optional
-
-from monai.data import DataLoader
-from prefetch_generator import BackgroundGenerator
 
 from .prepare_data import TARGET_DATASET_DIR
 
@@ -84,9 +80,9 @@ class DatasetJson:
             {
                 "image": self.image_paths[i],
                 "label": self.label_paths[i],
-                "volume": self.label_volumes[i],
-                "spacing": self.image_spacing[i],
-                "class": self.seg_class[i],
+                # "volume": self.label_volumes[i],
+                # "spacing": self.image_spacing[i],
+                # "class": self.seg_class[i],
             }
             for i in range(num_samples)
         ]
@@ -98,8 +94,3 @@ class DatasetValidation(DatasetJson): # TODO: fix for eval
 
         self.image_paths = self.image_paths[self.split_idx :: self.split_num]
         self.label_paths = self.label_paths[self.split_idx :: self.split_num]
-
-
-class BackgroundDataLoader(DataLoader):
-    def __iter__(self):
-        return BackgroundGenerator(super().__iter__())
