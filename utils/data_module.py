@@ -1,14 +1,79 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import lightning as L
 import monai.data
 import monai.transforms
-from torch.utils.data import DataLoader
+import numpy as np
+from monai.data.dataloader import DataLoader
+from monai.data.dataset import PersistentDataset
+from torch.utils.data import Dataset
 
 from .data_list import POSSIBLE_DATASETS
-from .data_loader import BackgroundDataLoader, DatasetJson
+from .data_loader import DatasetJson
 from .transforms import get_train_trainsforms, get_val_transforms
+
+
+class NonLeakDataSet(Dataset):
+    """Image dataset designed to prevent data leakage.
+    This is achieved by storing the data as a numpy array.
+    See https://github.com/pytorch/pytorch/issues/13246#issuecomment-905703662
+    """
+    def __init__(self,
+                 data: Dict[str, Union[str, float]],
+                 transform: Optional[monai.transforms.Compose]
+                 ) -> None:
+        self.image_paths = np.array([data_i["image"] for data_i in data]).astype(np.string_)
+        self.label_paths = np.array([data_i["label"] for data_i in data]).astype(np.string_)
+        self.transform = transform
+        self.length = len(data)
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, index: int):
+        data_i = {
+            "image": str(self.image_paths[index], encoding='utf-8'),
+            "label": str(self.label_paths[index], encoding='utf-8'),
+        }
+        data_i = self.transform(data_i)[0]
+        
+        return data_i["image"], data_i["label"]
+    
+
+class NonLeakPersistentDataSet(PersistentDataset):
+    """Image dataset designed to prevent data leakage.
+    This is achieved by storing the data as a numpy array.
+    See https://github.com/pytorch/pytorch/issues/13246#issuecomment-905703662
+    """
+    def __init__(self,
+                 data: Dict[str, Union[str, float]],
+                 transform: Optional[monai.transforms.Compose],
+                 cache_dir: Union[Path, str, None],
+                 ) -> None:
+        self.image_paths = np.array([data_i["image"] for data_i in data]).astype(np.string_)
+        self.label_paths = np.array([data_i["label"] for data_i in data]).astype(np.string_)
+        self.cache_dir = cache_dir
+        self.transform = transform
+        self.length = len(data)
+
+        super().__init__(data, transform, cache_dir)
+
+    def _transform(self, index: int):
+        data_i = {
+            "image": str(self.image_paths[index], encoding='utf-8'),
+            "label": str(self.label_paths[index], encoding='utf-8'),
+        }
+        pre_random_item = self._cachecheck(data_i)
+        return self._post_transform(pre_random_item)
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, index: int):
+        data_i = self._transform(index)[0]
+        
+        return data_i["image"], data_i["label"]
 
 
 class NeuroSamDataModule(L.LightningDataModule):
@@ -75,6 +140,9 @@ class NeuroSamDataModule(L.LightningDataModule):
         # TODO: maybe the resizing of images here
     
     def setup(self, stage: Optional[str]=None) -> None:
+
+        dataset_class = NonLeakDataSet # TODO: change if you want
+        # dataset_class = NonLeakPersistentDataSet
         
         if stage == "fit":
             train_json_fetcher = DatasetJson(
