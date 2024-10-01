@@ -20,6 +20,7 @@ class NeuroSamDataModule(L.LightningDataModule):
                  volume_threshold: int,
                  training_sets: List[str],
                  validation_sets: List[str],
+                 cache_dir: Union[Path, str, None]=None,
                  ) -> None:
         """Initialize the Data Module for the NeuroSAM model.
 
@@ -36,6 +37,8 @@ class NeuroSamDataModule(L.LightningDataModule):
         :type training_sets: List[str]
         :param validation_sets: List of validation datasets to use
         :type validation_sets: List[str]
+        :param cache_dir: Location to store temp files in slurm job
+        :type cacge_dir: Union[Path, str, None]
         """
         super().__init__()
 
@@ -43,6 +46,7 @@ class NeuroSamDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.volume_threshold = volume_threshold
+        self.cache_dir = cache_dir
 
         self._validate_datasets(
             training_sets=training_sets,
@@ -80,9 +84,17 @@ class NeuroSamDataModule(L.LightningDataModule):
 
             train_data_paths = train_json_fetcher.get_filtered_json()
 
-            self.train_dataset = monai.data.Dataset(
-                data=train_data_paths,
-                transform=self.train_transforms
+            self.train_dataset = (
+                dataset_class(
+                    data=train_data_paths,
+                    transform=self.train_transforms,
+                    cache_dir=self.cache_dir,
+                )
+                if issubclass(dataset_class, PersistentDataset)
+                else dataset_class(
+                    data=train_data_paths,
+                    transform=self.train_transforms,
+                )
             )
 
             val_json_fetcher = DatasetJson(
@@ -92,9 +104,17 @@ class NeuroSamDataModule(L.LightningDataModule):
 
             val_data_paths = val_json_fetcher.get_filtered_json()
 
-            self.val_dataset = monai.data.Dataset(
-                data=val_data_paths,
-                transform=self.val_transforms
+            self.val_dataset = (
+                dataset_class(
+                    data=val_data_paths,
+                    transform=self.val_transforms,
+                    cache_dir=self.cache_dir,
+                )
+                if issubclass(dataset_class, PersistentDataset)
+                else dataset_class(
+                    data=val_data_paths,
+                    transform=self.val_transforms,
+                )
             )
 
         if stage == "test":
