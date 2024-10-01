@@ -125,7 +125,7 @@ class NeuroSamDataModule(L.LightningDataModule):
         
 
     def train_dataloader(self):
-        return BackgroundDataLoader(
+        return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
@@ -134,10 +134,10 @@ class NeuroSamDataModule(L.LightningDataModule):
         )
 
     def val_dataloader(self):
-        return BackgroundDataLoader(
+        return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
         )
@@ -147,6 +147,3 @@ class NeuroSamDataModule(L.LightningDataModule):
     
     def predict_dataloader(self):
         return None
-    
-    def state_dict(self) -> Dict[str, Any]:
-        return 
