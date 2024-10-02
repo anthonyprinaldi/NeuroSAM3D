@@ -22,120 +22,134 @@ we recommend checking out [OpenGVLab](https://github.com/OpenGVLab) for more exc
 - 🏆 Conducted a thorough assessment of SAM-Med3D across 15 frequently used volumetric medical image segmentation datasets.
 
 ## 🔨 Usage
-### Training / Fine-tuning
-(we recommend fine-tuning with SAM-Med3D pre-trained weights from [link](https://github.com/uni-medical/SAM-Med3D#-checkpoint))
+### <a name="training-finetuning"></a>Training / Fine-tuning
+We recommend using `DinoV2` pretrained encoder weights to fine-tune the model. Reach out to [Tony Xu](https://tonyxu.me/) for the weights. 
+
+To use these pretrained weights and encoder, one must set the following fiels in the [`configs/dino.yaml`](./configs/dino.yaml):
+
+```
+model:
+  model_type: dinov2
+  model_cfg: ../configs/train/vit3d_highres
+  pretrained_weights: <FILEPATH HERE>
+```
 
 To train the SAM-Med3D model on your own data, follow these steps:
 
 #### 0. **(Recommend) Prepare the Pre-trained Weights**
 
-Download the checkpoint from [ckpt section](https://github.com/uni-medical/SAM-Med3D#-checkpoint) and move the pth file into `SAM_Med3D/ckpt/` (We recommand to use `SAM-Med3D-turbo.pth`.).
+Download the checkpoint from [ckpt section](https://github.com/uni-medical/SAM-Med3D#-checkpoint) (or get checkpoint from [Tony above](#training-finetuning))and move the pth file into `NeuroSAM3D/ckpt/` (We recommand to use DinoV2 weights).
 
 
-#### 1. Prepare Your Training Data (from nnU-Net-style dataset): 
+#### 1. Prepare Your Training Data: 
 
-Ensure that your training data is organized according to the structure shown in the `data/medical_preprocessed` directories. The target file structures should be like the following:
+Ensure that your training data is organized according to the structure shown in the `data_fixed/medical_preprocessed` directories. The general path to an image is `data_fixed/medical_preprocessed/<DATASET_NAME>/images<SET>/<IMAGE_FILENAME>.nii.gz`. The general path to a label is `data_fixed/medical_preprocessed/<DATASET_NAME>/labels<SET>/<CLASS>/<IMAGE_FILENAME>.nii.gz`. 
+
+The target file structures should be like the following:
 ```
-data/medical_preprocessed
-      ├── adrenal
-      │ ├── ct_WORD
-      │ │ ├── imagesTr
-      │ │ │ ├── word_0025.nii.gz
+data_fixed/medical_preprocessed
+      ├── AMOS
+      │ ├── imagesTr
+      │ │ ├── amos_0001.nii.gz
+      │ │ ├── ...
+      │ ├── labelsTr
+      │ │ ├── aorta
+      │ │ │ ├── amos_0001.nii.gz
       │ │ │ ├── ...
-      │ │ ├── labelsTr
-      │ │ │ ├── word_0025.nii.gz
+      │ │ ├── bladder
+      │ │ │ ├── amos_0001.nii.gz
       │ │ │ ├── ...
+      │ │ ├── ...
+      │ ├── imagesVal
+      │ │ ├── ...
+      │ ├── labelsVal
+      │ │ ├── ...
+      ├── BRATS
       ├── ...
 ```
 
-> If the original data are in the **nnU-Net style**, follow these steps:
-> 
-> For a nnU-Net style dataset, the original file structure should be:
-> ```
-> Task010_WORD
->      ├── imagesTr
->      │ ├── word_0025_0000.nii.gz
->      │ ├── ...
->      ├── labelsTr
->      │ ├── word_0025.nii.gz
->      │ ├── ...
-> ```
-> Then you should resample and convert the masks into binary. (You can use [script](https://github.com/uni-medical/SAM-Med3D/blob/b77585070b2f520ecd204b551a3f27715f5b3b43/utils/prepare_data_from_nnUNet.py) for nnU-Net folder)
-> ```
-> data/train
->       ├── adrenal
->       │ ├── ct_WORD
->       │ │ ├── imagesTr
->       │ │ │ ├── word_0025.nii.gz
->       │ │ │ ├── ...
->       │ │ ├── labelsTr
->       │ │ │ ├── word_0025.nii.gz (binary label)
->       │ │ │ ├── ...
->       ├── liver
->       │ ├── ct_WORD
->       │ │ ├── imagesTr
->       │ │ │ ├── word_0025.nii.gz
->       │ │ │ ├── ...
->       │ │ ├── labelsTr
->       │ │ │ ├── word_0025.nii.gz (binary label)
->       │ │ │ ├── ...
->       ├── ...
-> ```
+Where `imagesVal` and `labelsVal` have the same structure as their respective train (`*Tr`) directories.
 
-Then, modify the `utils/data_paths.py` according to your own data.
-```
-img_datas = [
-"data/train/adrenal/ct_WORD",
-"data/train/liver/ct_WORD",
-...
-]
-```
+> There are two steps for generating this data structure.
+> 
+> (1) A user must add their dataset class to [`utils/prepare_json_data.py`](utils/prepare_json_data.py). They need to add a constant for the full path to the original data at the top of the file. They must then specify a class that inherits from `BaseDatasetJSONGenerator`. In this class, define the class variables `dir` (constant defined above), `num_seg_classes` (number of classes in labeled image), `name` (easily readable name for dataset), `modality` (list of modalities, usually `"CT"` or `"MRI"`), `labels` (dictionary mapping values in labeled image to a class name e.g., `4: "pancreas"`). Lastly, the user must define a `classmethod` called `generate` which will define how to create a dataset dictionary for their new dataset. Refer to other classes in [`utils/prepare_json_data.py`](utils/prepare_json_data.py) for reference. 
+>
+> After making the above changes, run [`utils/prepare_json_data.py`](utils/prepare_json_data.py) to generate `dataset.json` in your new dataset directory.
+>
+> (2) A user must add their class defined in step (1) to the `DATASET_LIST` in [`utils/prepare_data.py`](utils/prepare_data.py). *Sometimes if a dataset has a strange formatting, the user will need to modify the logic of [`utils/prepare_data.py`](utils/prepare_data.py).*
+>
+> After making the above changes, run [`data.py`](data.py) to generate the proper file structure defined above.
+> 
+> Then, modify the [`utils/data_list.py`](utils/data_list.py) according to your new dataset. The name of this new entry should be the `name` attribute you gave your dataset in step (1) and the sets available for the dataset (`Tr`, `Val`, `Ts`)
+>
+>```
+>POSSIBLE_DATASETS = [
+>    "WORD_Val",
+>    "AMOS_Val",
+>    "ONDRI_Tr",
+>    ...
+>]
+>```
 
 
 #### 2. **Run the Training Script**: 
-Run `bash train.sh` to execute the following command in your terminal:
+Run [`mytrain.sh`](mytrain.sh) if running in a SLURM environment (some file modifications will be needed for your exact use case) or run [`train.py`](train.py) with the following command
 
 ```
-python train.py --multi_gpu --task_name ${tag}
-```
-This will start the training process of the SAM-Med3D model on your prepared data. If you use only one GPU, remove the `--multi_gpu` flag.
-
-The key options are listed below:
-
-- task_name: task name
-- checkpoint: pre-trained checkpoint
-- work_dir: results folder for log and ckpt
-- multi_gpu: use multiple GPU with DDP
-- gpu_ids: set gpu ids used for training
-- num_epochs: number of epoches
-- batch_size: batch size for training
-- lr: learning rate for training
-
-
-**Hint**: Use the `--checkpoint` to set the pre-trained weight path, the model will be trained from scratch if no ckpt in the path is found!
-
-### Evaluation
-Prepare your own dataset and refer to the samples in `data/validation` to replace them according to your specific scenario. 
-Then you can simply run `bash val.sh` to test SAM-Med3D on your data. 
-Make sure the masks are processed into the one-hot format (have only two values: the main image (foreground) and the background).
-
-```
-python validation.py --seed 2023\
- -vp ./results/vis_sam_med3d \
- -cp ./ckpt/sam_med3d_turbo.pth \
- -tdp ./data/medical_preprocessed -nc 1 \
- --save_name ./results/sam_med3d.py
+python train.py fit ...
 ```
 
-- vp: visualization path, dir to save the final visualization files
-- cp: checkpoint path
-- tdp: test data path, where your data is placed
-- nc: number of clicks of prompt points
-- save_name: filename to save evaluation results 
+This will start the training process of the NeuroSAM3D model on your prepared data.
 
-For validation of SAM and SAM-Med2D on 3D volumetric data, you can refer to `scripts/val_sam.sh` and `scripts/val_med2d.sh` for details.
+By default the model will use all arguments specified in [`configs/all.yaml`](configs/all.yaml). If you would like to modify any entries, either do so directly, or create a copy of the file and modify to your desire. When running with a new config file use the following command
 
-Hint: We also provide a simple script `sum_result.py` to help summarize the results from file like `./results/sam_med3d.py`. 
+```
+python train.py fit --config <YOUR_CONFIG>.yaml
+```
+
+You can view all the possible arguments by running
+
+```
+python train.py fit --help
+```
+
+Individual arguments can be overridden by passing their flag directly to the CLI
+
+```
+python train.py fit --data.volume_threshold 1000
+```
+
+
+**Hint**: Use the `--model.checkpoint` to set the pre-trained weight path for the entire encoder-decoder. The model will load these weights and start training. Alternatively, use `--model.pretrained_weights` to load in encoder-only weights for the `DinoV2` model. Lastly, use `--ckpt_path` to load in a `lightning` checkpoint and resume training from this state (including step, optimizer state, hyperparams, etc.)
+
+
+### Evaluation - UNTESTED
+
+Below is all the old version of the README. We have not tested any validation with NeuroSAM3D, so it will likely need modification.
+
+
+>Prepare your own dataset and refer to the samples in `data/validation` to replace them according to your specific scenario. 
+>Then you can simply run `bash val.sh` to test SAM-Med3D on your data. 
+>Make sure the masks are processed into the one-hot format (have only two values: the main image (foreground) and the background).
+>
+>```
+>python validation.py --seed 2023\
+> -vp ./results/vis_sam_med3d \
+> -cp ./ckpt/sam_med3d_turbo.pth \
+> -tdp ./data/medical_preprocessed -nc 1 \
+> --save_name ./results/sam_med3d.py
+>```
+>
+>- vp: visualization path, dir to save the final visualization files
+>- cp: checkpoint path
+>- tdp: test data path, where your data is placed
+>- nc: number of clicks of prompt points
+>- save_name: filename to save evaluation results 
+>
+>For validation of SAM and SAM-Med2D on 3D volumetric data, you can refer to `scripts/val_sam.sh` and `scripts/val_med2d.sh` for details.
+>
+>Hint: We also provide a simple script `sum_result.py` to help summarize the results from file like `./results/sam_med3d.py`. 
+
 
 ## 🔗 Checkpoint
 **Our most recommended version is SAM-Med3D-turbo**
