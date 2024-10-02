@@ -1,0 +1,101 @@
+data:
+  img_size: 128 # DO NOT CHANGE
+  batch_size: 4
+  num_workers: 8
+  volume_threshold: 100
+  cache_dir: null
+  training_sets:
+    # - CTStroke_Tr
+    - AMOS_Tr
+    - CTOrgan_Tr
+    - AbdomenCT_Tr
+    # - ISLES_Tr
+    - WORD_Tr
+    - StanfordKnee_Tr
+    - PancreasCt_Tr
+    - MedSamDecathlon_Tr
+    - Kits_Tr
+    - SegThoracicOrgans_Tr
+    - MultiModalWholeHeart_Tr
+    - CovidCT_Tr
+    - ONDRI_Tr
+    - TotalSegmentator_Tr
+    - LUNA_Tr
+    - ProstateMRI_Tr
+    - LiTS_Tr
+    - MRIGlioblastoma_Tr
+    - HealthyTotalBody_Tr
+  validation_sets:
+    - BRATS_Tr
+    - WORD_Val
+    - AMOS_Val
+    - ONDRI_Val
+    - ProstateMRI_Ts
+
+
+model:
+  model_type: vit_hiera
+  work_dir: ./work_dir
+  task_name: train-neurosam-hiera-encoder
+  lr: 1e-03
+  weight_decay: 0.005
+  lr_scheduler: steplr
+  step_size: 
+    - 100
+  gamma: 0.9
+  largest_first: true
+  click_type: random
+  multi_click: true
+  bbox_first: false
+  num_clicks: 11
+  logging_batches_idx:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+  checkpoint: null
+  model_cfg: null
+  pretrained_weights: null
+
+trainer:
+  default_root_dir: ${model.work_dir}/${model.task_name}
+  accelerator: auto
+  devices: auto
+  accumulate_grad_batches: 4 # TODO
+  check_val_every_n_epoch: 1
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: train_loss
+        verbose: true
+        dirpath: ${trainer.default_root_dir}
+        filename: 'best-loss-{epoch}-{train_loss:.4f}'
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: train_dice
+        verbose: true
+        mode: max
+        dirpath: ${trainer.default_root_dir}
+        filename: 'best-dice-{epoch}-{train_dice:.4f}'
+
+  max_epochs: 200
+  precision: bf16-mixed
+  num_nodes: 1
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      name: ${model.task_name}
+      project: NeuroSam
+      entity: aiconslab
+      log_model: all
+      save_dir: ${model.work_dir}/${model.task_name}
+
+  benchmark: true
+  enable_progress_bar: true
+  use_distributed_sampler: true
+  strategy: ddp_find_unused_parameters_true
+  log_every_n_steps: 1
+  val_check_interval: 0.2

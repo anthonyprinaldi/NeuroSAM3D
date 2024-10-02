@@ -4,18 +4,19 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import Any, Dict, List, Tuple
+
+import lightning as L
 import torch
 from torch import nn
 from torch.nn import functional as F
-
-from typing import Any, Dict, List, Tuple
 
 from .image_encoder3D import ImageEncoderViT3D
 from .mask_decoder3D import MaskDecoder3D
 from .prompt_encoder3D import PromptEncoder3D
 
 
-class Sam3D(nn.Module):
+class Sam3D(L.LightningModule):
     mask_threshold: float = 0.0
     image_format: str = "L"
 
@@ -46,9 +47,6 @@ class Sam3D(nn.Module):
         self.register_buffer("pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False)
         self.register_buffer("pixel_std", torch.Tensor(pixel_std).view(-1, 1, 1), False)
 
-    @property
-    def device(self) -> Any:
-        return self.pixel_mean.device
 
     @torch.no_grad()
     def forward(

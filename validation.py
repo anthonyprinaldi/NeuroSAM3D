@@ -243,7 +243,7 @@ def finetune_model_predict3D(img3D, gt3D, sam_model_tune, device='cuda', click_m
     dice_list = []
     if prev_masks is None:
         prev_masks = torch.zeros_like(gt3D).to(device)
-    low_res_masks = F.interpolate(prev_masks.float(), size=(args.crop_size//4,args.crop_size//4,args.crop_size//4))
+    low_res_masks = F.interpolate(prev_masks.float(), size=(args.crop_size,args.crop_size,args.crop_size))
 
     with torch.no_grad():
         image_embedding = sam_model_tune.image_encoder(img3D.to(device)) # (1, 384, 16, 16, 16)
@@ -297,11 +297,11 @@ if __name__ == "__main__":
     ]
 
     test_dataset = DatasetValidation(
-        paths=all_dataset_paths, 
+        dataset_list=all_dataset_paths, 
         mode="Val", 
         data_type=args.data_type, 
         transform=tio.Compose(infer_transform),
-        threshold=0,
+        volume_threshold=0,
         split_num=args.split_num,
         split_idx=args.split_idx,
         pcc=False,
@@ -329,8 +329,6 @@ if __name__ == "__main__":
         args.sam_checkpoint = args.checkpoint_path
         sam_model_tune = sam_model_registry[args.model_type](args).to(device)
 
-
-    sam_trans = ResizeLongestSide3D(sam_model_tune.image_encoder.img_size)
 
     all_iou_list = []
     all_dice_list = []  
