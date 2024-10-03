@@ -41,7 +41,7 @@ model:
   weight_decay: 0.005
   lr_scheduler: steplr
   step_size: 
-    - 100
+    - 2000
   gamma: 0.9
   largest_first: true
   click_type: random
@@ -70,14 +70,30 @@ trainer:
         monitor: train_loss
         verbose: true
         dirpath: ${trainer.default_root_dir}
-        filename: 'best-loss-{epoch}-{train_loss:.4f}'
+        filename: 'best-train-loss-{epoch}-{train_loss:.4f}'
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: train_dice
         verbose: true
         mode: max
         dirpath: ${trainer.default_root_dir}
-        filename: 'best-dice-{epoch}-{train_dice:.4f}'
+        filename: 'best-train-dice-{epoch}-{train_dice:.4f}'
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        verbose: true
+        dirpath: ${trainer.default_root_dir}
+        filename: 'best-val-loss-{epoch}-{train_loss:.4f}'
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val_dice
+        verbose: true
+        mode: max
+        dirpath: ${trainer.default_root_dir}
+        filename: 'best-val-dice-{epoch}-{train_dice:.4f}'
+    - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: step
 
   max_epochs: 200
   precision: bf16-mixed
