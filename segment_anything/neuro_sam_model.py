@@ -171,7 +171,13 @@ class NeuroSamModel(L.LightningModule):
         else:
             lr_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, 0.1)
 
-        return [optimizer], [lr_scheduler]
+        lr_scheduler_config = {
+            "scheduler": lr_scheduler,
+            "interval": "step",
+            "frequency": 1
+        }
+
+        return [optimizer], [lr_scheduler_config]
     
 
     def set_loss_fn(self):
