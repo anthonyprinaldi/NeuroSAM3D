@@ -41,7 +41,7 @@ model:
   weight_decay: 0.005
   lr_scheduler: steplr
   step_size: 
-    - 100
+    - 2000
   gamma: 0.9
   largest_first: true
   click_type: random
