@@ -1,27 +1,31 @@
 import os
+
 join = os.path.join
-import numpy as np
-from glob import glob
-import torch
-from segment_anything.build_sam3D import sam_model_registry3D
-from segment_anything.utils.transforms3D import ResizeLongestSide3D
-from segment_anything import sam_model_registry
-from tqdm import tqdm
 import argparse
-import SimpleITK as sitk
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import SimpleITK as sitk
-import torchio as tio
-import numpy as np
-from collections import OrderedDict, defaultdict
 import json
 import pickle
-from utils.click_method import get_next_click3D_torch_ritm, get_next_click3D_torch_2
-from utils.data_loader import Dataset_Union_ALL_Val
+from collections import OrderedDict, defaultdict
+from glob import glob
+from pathlib import Path
+
+import numpy as np
+import SimpleITK as sitk
+import torch
+import torch.nn.functional as F
+import torchio as tio
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from segment_anything import sam_model_registry
+from segment_anything.build_sam3D import sam_model_registry3D
+from segment_anything.utils.transforms3D import ResizeLongestSide3D
+from utils import training_list as TRAINING
+from utils import validation_list as VALIDATION
+from utils.click_method import (get_next_click3D_torch_2,
+                                get_next_click3D_torch_ritm)
+from utils.data_loader import DatasetValidation
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-tdp', '--test_data_path', type=str, default='./data/validation')
 parser.add_argument('-vp', '--vis_path', type=str, default='./visualization')
 parser.add_argument('-cp', '--checkpoint_path', type=str, default='./ckpt/sam_med3d.pth')
 parser.add_argument('--save_name', type=str, default='union_out_dice.py')
@@ -240,7 +244,7 @@ def finetune_model_predict3D(img3D, gt3D, sam_model_tune, device='cuda', click_m
     dice_list = []
     if prev_masks is None:
         prev_masks = torch.zeros_like(gt3D).to(device)
-    low_res_masks = F.interpolate(prev_masks.float(), size=(args.crop_size//4,args.crop_size//4,args.crop_size//4))
+    low_res_masks = F.interpolate(prev_masks.float(), size=(args.crop_size,args.crop_size,args.crop_size))
 
     with torch.no_grad():
         image_embedding = sam_model_tune.image_encoder(img3D.to(device)) # (1, 384, 16, 16, 16)
@@ -285,8 +289,7 @@ def finetune_model_predict3D(img3D, gt3D, sam_model_tune, device='cuda', click_m
     return pred_list, click_points, click_labels, iou_list, dice_list
 
 if __name__ == "__main__":    
-    all_dataset_paths = glob(join(args.test_data_path, "*", "*"))
-    all_dataset_paths = list(filter(os.path.isdir, all_dataset_paths))
+    all_dataset_paths = VALIDATION
     print("get", len(all_dataset_paths), "datasets")
 
     infer_transform = [
@@ -294,12 +297,12 @@ if __name__ == "__main__":
         tio.CropOrPad(mask_name='label', target_shape=(args.crop_size,args.crop_size,args.crop_size)),
     ]
 
-    test_dataset = Dataset_Union_ALL_Val(
-        paths=all_dataset_paths, 
+    test_dataset = DatasetValidation(
+        dataset_list=all_dataset_paths, 
         mode="Val", 
         data_type=args.data_type, 
         transform=tio.Compose(infer_transform),
-        threshold=0,
+        volume_threshold=0,
         split_num=args.split_num,
         split_idx=args.split_idx,
         pcc=False,
@@ -327,8 +330,6 @@ if __name__ == "__main__":
         args.sam_checkpoint = args.checkpoint_path
         sam_model_tune = sam_model_registry[args.model_type](args).to(device)
 
-
-    sam_trans = ResizeLongestSide3D(sam_model_tune.image_encoder.img_size)
 
     all_iou_list = []
     all_dice_list = []  
