@@ -6,6 +6,7 @@ data:
   cache_dir: null
   training_sets:
     # - CTStroke_Tr
+    # - ADNI_Tr
     - AMOS_Tr
     - CTOrgan_Tr
     - AbdomenCT_Tr
