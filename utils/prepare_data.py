@@ -12,6 +12,7 @@ from tqdm import tqdm
 DATASET_ROOT = "../data"
 DATASET_LIST = [
     AbdomenCTJSONGenerator,
+    ADNIJSONGenerator,
     AMOSJSONGenerator,
     BratsJSONGenerator,
     CovidCTJSONGenerator,
@@ -145,6 +146,8 @@ def main(args):
             elif dataset_name == "CTStroke":
                 task = Path(seg).parts[-2].split("_")[1]
                 cls_name = meta_info["labels"][task][str(seg_idx)].replace(" ", "_")
+            elif dataset_name == "ADNI":
+                cls_name = str(meta_info["labels"][str(seg_idx)])
             else:
                 cls_name = meta_info["labels"][str(seg_idx)].replace(" ", "_")
 

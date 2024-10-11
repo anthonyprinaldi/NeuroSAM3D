@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, List
 
 ABDOMEN_CT_DIR = Path('/home/arinaldi/project/aiconsgrp/data/AbdomenCT_1K')
+ADNI_DIR = Path('/home/arinaldi/project/aiconsgrp/data/ADNI')
 AMOS_DIR = Path('/home/arinaldi/project/aiconsgrp/data/AMOS')
 BRATS2020_DIR = Path('/home/arinaldi/project/aiconsgrp/data/BraTs2020')
 COVID_CT_LUNG_DIR = Path('/home/arinaldi/project/aiconsgrp/data/COVID_CT_Lung')
@@ -75,6 +76,39 @@ class AbdomenCTJSONGenerator(BaseDatasetJSONGenerator):
         work_dir = cls.dir if alternate_dir is None else alternate_dir
 
         imagesTr = cls.load_all_images(work_dir / 'imagesTr')
+
+        for image in imagesTr:
+            dataset_json.extend(
+                [
+                    {
+                        "image": str(image),
+                        "seg": str(work_dir / 'labelsTr' / image.name),
+                        "seg_index": x + 1
+                    } for x in range(cls.num_seg_classes) if (work_dir / 'labelsTr' / image.name).exists()
+                ]
+            )
+
+        cls.save_dataset_json(dataset_json)
+        return dataset_json
+    
+
+class ADNIJSONGenerator(BaseDatasetJSONGenerator):
+    dir = ADNI_DIR
+    num_seg_classes = 255
+    name = "ADNI"
+    modality = ["MR"]
+    labels = {
+        i: i
+        for i in range(num_seg_classes + 1)
+    }
+    labels.update({0: "background"})
+
+    @classmethod
+    def generate(cls, alternate_dir: Optional[Path] = None):
+        dataset_json = []
+        work_dir = cls.dir if alternate_dir is None else alternate_dir
+
+        imagesTr = cls.load_all_images(work_dir / "imagesTr")
 
         for image in imagesTr:
             dataset_json.extend(
@@ -1066,6 +1100,7 @@ class JSONJoiner:
 if __name__ == "__main__":
     all_data_classes = (
         AbdomenCTJSONGenerator,
+        ADNIJSONGenerator,
         AMOSJSONGenerator,
         BratsJSONGenerator,
         CovidCTJSONGenerator,
